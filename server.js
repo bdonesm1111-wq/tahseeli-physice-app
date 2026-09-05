@@ -7,7 +7,7 @@ const app = express();
 const db = new Database("data.sqlite");
 db.pragma("foreign_keys = ON");
 
-// إنشاء الجداول
+// 1. إنشاء الجداول في قاعدة البيانات
 db.exec(`
 CREATE TABLE IF NOT EXISTS students (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -41,7 +41,6 @@ app.use(session({
   saveUninitialized: false
 }));
 
-// كلمة مرور الإدارة المباشرة
 const ADMIN_PASS = "admin123";
 
 function checkAdmin(req, res, next) {
@@ -49,7 +48,7 @@ function checkAdmin(req, res, next) {
   res.status(401).json({ error: "غير مصرح" });
 }
 
-// مسارات التحقق للوحة الإدارة
+// 2. مسارات التحقق والأدمن
 app.post("/api/login", (req, res) => {
   if (req.body.password === ADMIN_PASS) {
     req.session.isAdmin = true;
@@ -68,13 +67,12 @@ app.get("/api/auth-check", (req, res) => {
   res.json({ isAdmin: !!(req.session && req.session.isAdmin) });
 });
 
-// مسارات البيانات العامة للطلاب
+// 3. مسارات بيانات الطلاب والاختبارات
 app.get("/api/data", (req, res) => {
   const students = db.prepare("SELECT * FROM students").all();
   const tests = db.prepare("SELECT * FROM tests ORDER BY id ASC").all();
   const scores = db.prepare("SELECT * FROM scores").all();
 
-  // حساب الإحصائيات المباشرة والترتيب
   const leaderboard = students.map(st => {
     const stScores = scores.filter(s => s.student_id === st.id);
     const count = stScores.length;
@@ -95,7 +93,6 @@ app.get("/api/data", (req, res) => {
   res.json({ leaderboard, tests, totalStudents: students.length, totalTests: tests.length });
 });
 
-// مسارات لوحة التحكم (إضافة/تعديل/حذف)
 app.post("/api/students", checkAdmin, (req, res) => {
   const { name, class_name } = req.body;
   if (!name || !['أ','ب','ج','د'].includes(class_name)) return res.status(400).json({ error: "بيانات ناقصة" });
@@ -133,15 +130,13 @@ app.post("/api/scores", checkAdmin, (req, res) => {
   res.json({ ok: true });
 });
 
-app.use(express.static(path.join(__dirname, "public")));
-
-app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
-});
-
+// 4. توجيه الواجهة الرئيسية من المجلد الحالي مباشرة
 app.use(express.static(__dirname));
 
 app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
+// 5. تشغيل السيرفر
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`App running on port ${PORT}`));
