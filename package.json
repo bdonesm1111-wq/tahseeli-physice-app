@@ -1,0 +1,13 @@
+{
+  "name": "tahseeli-physics2",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.8.0",
+    "express": "^4.21.2",
+    "express-session": "^1.18.1"
+  }
+}
