@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>تحدي التحصيلي فيزياء٢</title>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #2b580c;
+      --accent: #639a67;
+      --bg: #f4f7f6;
+      --card: #ffffff;
+      --text: #333333;
+    }
+    body {
+      font-family: 'Tajawal', sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 15px;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    header {
+      text-align: center;
+      background: var(--primary);
+      color: white;
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    .stat-card {
+      background: var(--card);
+      padding: 15px;
+      border-radius: 10px;
+      text-align: center;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+    .stat-card h3 { margin: 0; font-size: 24px; color: var(--primary); }
+    .tabs {
+      display: flex;
+      gap: 5px;
+      overflow-x: auto;
+      margin-bottom: 15px;
+      padding-bottom: 5px;
+    }
+    .tab-btn {
+      padding: 10px 15px;
+      background: #e2e8f0;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-family: inherit;
+      white-space: nowrap;
+    }
+    .tab-btn.active { background: var(--primary); color: white; }
+    .table-container {
+      background: var(--card);
+      border-radius: 12px;
+      overflow-x: auto;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    table { width: 100%; border-collapse: collapse; text-align: right; }
+    th, td { padding: 12px 15px; border-bottom: 1px solid #eee; }
+    th { background: #f8fafc; color: #64748b; }
+    .medal { font-size: 18px; margin-left: 5px; }
+    .admin-panel {
+      background: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      margin-top: 30px;
+      border: 2px dashed var(--accent);
+    }
+    input, select, button {
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-family: inherit;
+      margin: 5px 0;
+    }
+    button.btn-primary { background: var(--primary); color: white; border: none; cursor: pointer; }
+    .btn-danger { background: #e53e3e; color: white; border: none; cursor: pointer; }
+    .flex-gap { display: flex; gap: 10px; flex-wrap: wrap; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1 style="margin:0;">🏆 تحدي التحصيلي فيزياء٢</h1>
+    <p style="margin:5px 0 0 0;">متابعة نتائج واختبارات الطالبات التحصيلية بشكل أسبوعي</p>
+  </header>
+
+  <div class="stats-grid">
+    <div class="stat-card">
+      <p style="margin:0;color:#666;">إجمالي الطالبات</p>
+      <h3 id="totalStudentsCount">0</h3>
+    </div>
+    <div class="stat-card">
+      <p style="margin:0;color:#666;">عدد الاختبارات</p>
+      <h3 id="totalTestsCount">0</h3>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('ALL')">الترتيب العام</button>
+    <button class="tab-btn" onclick="switchTab('أ')">فصل (أ)</button>
+    <button class="tab-btn" onclick="switchTab('ب')">فصل (ب)</button>
+    <button class="tab-btn" onclick="switchTab('ج')">فصل (ج)</button>
+    <button class="tab-btn" onclick="switchTab('د')">فصل (د)</button>
+  </div>
+
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>المركز</th>
+          <th>اسم الطالبة</th>
+          <th>الفصل</th>
+          <th>عدد الاختبارات</th>
+          <th>المجموع</th>
+          <th>المتوسط</th>
+        </tr>
+      </thead>
+      <tbody id="leaderboardBody"></tbody>
+    </table>
+  </div>
+
+  <!-- لوحة الإدارة -->
+  <div class="admin-panel">
+    <h3>⚙️ لوحة الإدارة</h3>
+    <div id="loginSection">
+      <p>أدخلي كلمة المرور للتحكم بالبيانات (كلمة المرور الإفتراضية: <code>admin123</code>):</p>
+      <input type="password" id="adminPassInput" placeholder="كلمة المرور">
+      <button class="btn-primary" onclick="login()">دخول</button>
+    </div>
+
+    <div id="adminControls" style="display:none;">
+      <div style="margin-bottom:20px;" class="flex-gap">
+        <h4>1. إضافة طالبة:</h4>
+        <input type="text" id="stName" placeholder="اسم الطالبة">
+        <select id="stClass">
+          <option value="أ">فصل (أ)</option>
+          <option value="ب">فصل (ب)</option>
+          <option value="ج">فصل (ج)</option>
+          <option value="د">فصل (د)</option>
+        </select>
+        <button class="btn-primary" onclick="addStudent()">حفظ الطالبة</button>
+      </div>
+
+      <hr>
+
+      <div style="margin-bottom:20px;" class="flex-gap">
+        <h4>2. إضافة اختبار أسبوعي:</h4>
+        <input type="text" id="testName" placeholder="اسم الاختبار (مثال: الأسبوع 1)">
+        <button class="btn-primary" onclick="addTest()">إضافة الاختبار</button>
+      </div>
+
+      <hr>
+
+      <h4>3. إدخال وتعديل الدرجات:</h4>
+      <div id="scoresTableSection"></div>
+
+      <br>
+      <button class="btn-danger" onclick="logout()">تسجيل الخروج</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentData = { leaderboard: [], tests: [] };
+let activeTab = 'ALL';
+let isAdmin = false;
+
+async function loadData() {
+  const res = await fetch('/api/data');
+  currentData = await res.json();
+  document.getElementById('totalStudentsCount').innerText = currentData.totalStudents;
+  document.getElementById('totalTestsCount').innerText = currentData.totalTests;
+  renderTable();
+  if(isAdmin) renderAdminScores();
+}
+
+function switchTab(tab) {
+  activeTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  renderTable();
+}
+
+function renderTable() {
+  let list = [...currentData.leaderboard];
+  if (activeTab !== 'ALL') {
+    list = list.filter(s => s.class_name === activeTab);
+  }
+
+  // ترتيب حسب المتوسط ثم المجموع
+  list.sort((a, b) => b.avg - a.avg || b.total - a.total);
+
+  const tbody = document.getElementById('leaderboardBody');
+  tbody.innerHTML = list.map((st, idx) => {
+    let medal = '';
+    if (idx === 0) medal = '🥇 ';
+    else if (idx === 1) medal = '🥈 ';
+    else if (idx === 2) medal = '🥉 ';
+
+    return `
+      <tr>
+        <td><b>${medal}${idx + 1}</b></td>
+        <td>${st.name}</td>
+        <td>فصل (${st.class_name})</td>
+        <td>${st.count}</td>
+        <td>${st.total}</td>
+        <td><b>${st.avg}</b></td>
+      </tr>
+    `;
+  }).join('');
+}
+
+async function checkAuth() {
+  const res = await fetch('/api/auth-check');
+  const data = await res.json();
+  isAdmin = data.isAdmin;
+  document.getElementById('loginSection').style.display = isAdmin ? 'none' : 'block';
+  document.getElementById('adminControls').style.display = isAdmin ? 'block' : 'none';
+  if (isAdmin) renderAdminScores();
+}
+
+async function login() {
+  const password = document.getElementById('adminPassInput').value;
+  const res = await fetch('/api/login', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ password })
+  });
+  if (res.ok) { checkAuth(); loadData(); }
+  else alert('كلمة المرور خاطئة');
+}
+
+async function logout() {
+  await fetch('/api/logout', { method: 'POST' });
+  checkAuth();
+}
+
+async function addStudent() {
+  const name = document.getElementById('stName').value;
+  const class_name = document.getElementById('stClass').value;
+  if (!name) return;
+  await fetch('/api/students', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ name, class_name })
+  });
+  document.getElementById('stName').value = '';
+  loadData();
+}
+
+async function addTest() {
+  const name = document.getElementById('testName').value;
+  if (!name) return;
+  await fetch('/api/tests', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ name })
+  });
+  document.getElementById('testName').value = '';
+  loadData();
+}
+
+function renderAdminScores() {
+  const div = document.getElementById('scoresTableSection');
+  if (currentData.tests.length === 0 || currentData.leaderboard.length === 0) {
+    div.innerHTML = '<p>قم بإضافة طالبات واختبارات أولاً لإدخال الدرجات.</p>';
+    return;
+  }
+
+  let html = '<div style="overflow-x:auto;"><table><thead><tr><th>الطالبة</th>';
+  currentData.tests.forEach(t => {
+    html += `<th>${t.name} <button class="btn-danger" style="padding:2px 5px;font-size:10px" onclick="deleteTest(${t.id})">حذف</button></th>`;
+  });
+  html += '<th>إجراء</th></tr></thead><tbody>';
+
+  currentData.leaderboard.forEach(st => {
+    html += `<tr><td>${st.name} (${st.class_name})</td>`;
+    currentData.tests.forEach(t => {
+      const val = st.scoresMap[t.id] !== undefined ? st.scoresMap[t.id] : '';
+      html += `<td><input type="number" style="width:60px;" value="${val}" onchange="saveScore(${st.id}, ${t.id}, this.value)"></td>`;
+    });
+    html += `<td><button class="btn-danger" onclick="deleteStudent(${st.id})">حذف الطالبة</button></td></tr>`;
+  });
+  html += '</tbody></table></div>';
+  div.innerHTML = html;
+}
+
+async function saveScore(student_id, test_id, score) {
+  await fetch('/api/scores', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ student_id, test_id, score })
+  });
+  loadData();
+}
+
+async function deleteStudent(id) {
+  if (confirm('هل أنتِ متأكدة من حذف الطالبة؟')) {
+    await fetch(`/api/students/${id}`, { method: 'DELETE' });
+    loadData();
+  }
+}
+
+async function deleteTest(id) {
+  if (confirm('هل أنتِ متأكدة من حذف الاختبار؟')) {
+    await fetch(`/api/tests/${id}`, { method: 'DELETE' });
+    loadData();
+  }
+}
+
+checkAuth();
+loadData();
+</script>
+</body>
+</html>
