@@ -8,7 +8,9 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static('public'));
+
+// خدمة الملفات الثابتة من مجلد public
+app.use(express.static(path.join(__dirname, 'public')));
 
 app.use(session({
   secret: 'physics-secret-key-2026',
@@ -16,8 +18,9 @@ app.use(session({
   saveUninitialized: true
 }));
 
+// إعداد قاعدة البيانات
 const db = new sqlite3.Database('./database.db', (err) => {
-  if (err) console.error(err.message);
+  if (err) console.error('Database error:', err.message);
   else console.log('Connected to SQLite database.');
 });
 
@@ -57,6 +60,7 @@ db.serialize(() => {
 
 const isAdmin = (req) => req.session && req.session.isAdmin;
 
+// تسجيل دخول الإدارة
 app.post('/api/login', (req, res) => {
   const { password } = req.body;
   if (password === 'admin123') {
@@ -76,10 +80,11 @@ app.get('/api/auth-check', (req, res) => {
   res.json({ isAdmin: !!isAdmin(req) });
 });
 
+// جلب البيانات
 app.get('/api/data', (req, res) => {
-  db.all('SELECT id, name, class_name FROM students', [], (err, students) => {
-    db.all('SELECT * FROM tests', [], (err, tests) => {
-      db.all('SELECT * FROM scores', [], (err, scores) => {
+  db.all('SELECT id, name, class_name FROM students', [], (err, students = []) => {
+    db.all('SELECT * FROM tests', [], (err, tests = []) => {
+      db.all('SELECT * FROM scores', [], (err, scores = []) => {
         const leaderboard = students.map(st => {
           const stScores = scores.filter(s => s.student_id === st.id);
           const scoresMap = {};
@@ -104,6 +109,7 @@ app.get('/api/data', (req, res) => {
   });
 });
 
+// استيراد الأسماء مع الرمز
 app.post('/api/students/bulk', (req, res) => {
   if (!isAdmin(req)) return res.status(403).json({ error: 'غير مصرح' });
   const { class_name, students } = req.body;
@@ -113,10 +119,11 @@ app.post('/api/students/bulk', (req, res) => {
   res.json({ success: true });
 });
 
+// التحقق من الرمز
 app.post('/api/students/verify-pin', (req, res) => {
   const { student_id, pin } = req.body;
   db.get('SELECT pin FROM students WHERE id = ?', [student_id], (err, row) => {
-    if (row && row.pin.trim() === pin.trim()) {
+    if (row && String(row.pin).trim() === String(pin).trim()) {
       res.json({ valid: true });
     } else {
       res.json({ valid: false });
@@ -124,6 +131,7 @@ app.post('/api/students/verify-pin', (req, res) => {
   });
 });
 
+// إنشاء اختبار
 app.post('/api/tests/full', (req, res) => {
   if (!isAdmin(req)) return res.status(403).json({ error: 'غير مصرح' });
   const { name, max_score, questions } = req.body;
@@ -143,25 +151,28 @@ app.post('/api/tests/full', (req, res) => {
   });
 });
 
+// حذف اختبار
 app.delete('/api/tests/:id', (req, res) => {
   if (!isAdmin(req)) return res.status(403).json({ error: 'غير مصرح' });
   const testId = req.params.id;
 
-  db.run('DELETE FROM tests WHERE id = ?', [testId], (err) => {
-    db.run('DELETE FROM questions WHERE id = ?', [testId], (err) => {
-      db.run('DELETE FROM scores WHERE id = ?', [testId], (err) => {
+  db.run('DELETE FROM tests WHERE id = ?', [testId], () => {
+    db.run('DELETE FROM questions WHERE id = ?', [testId], () => {
+      db.run('DELETE FROM scores WHERE id = ?', [testId], () => {
         res.json({ success: true });
       });
     });
   });
 });
 
+// جلب الأسئلة
 app.get('/api/tests/:id/questions', (req, res) => {
   db.all('SELECT id, question_text, option_a, option_b, option_c, option_d FROM questions WHERE test_id = ?', [req.params.id], (err, questions) => {
     res.json({ questions: questions || [] });
   });
 });
 
+// إرسال الإجابات
 app.post('/api/tests/:id/submit', (req, res) => {
   const testId = req.params.id;
   const { student_id, answers } = req.body;
@@ -171,7 +182,7 @@ app.post('/api/tests/:id/submit', (req, res) => {
 
     let correctCount = 0;
     questions.forEach(q => {
-      if (answers[q.id] === q.correct_option) correctCount++;
+      if (answers && answers[q.id] === q.correct_option) correctCount++;
     });
 
     const score = Math.round((correctCount / questions.length) * 100);
@@ -186,6 +197,7 @@ app.post('/api/tests/:id/submit', (req, res) => {
   });
 });
 
+// تحديث درجات يدوياً
 app.post('/api/scores', (req, res) => {
   if (!isAdmin(req)) return res.status(403).json({ error: 'غير مصرح' });
   const { student_id, test_id, score } = req.body;
@@ -203,11 +215,12 @@ app.post('/api/scores', (req, res) => {
   }
 });
 
+// استيراد من نموذج جوجل
 app.post('/api/scores/bulk-import', (req, res) => {
   if (!isAdmin(req)) return res.status(403).json({ error: 'غير مصرح' });
   const { test_id, rows } = req.body;
 
-  db.all('SELECT id, name FROM students', [], (err, students) => {
+  db.all('SELECT id, name FROM students', [], (err, students = []) => {
     let matched = 0;
     const stmt = db.prepare(`INSERT INTO scores (student_id, test_id, score) VALUES (?, ?, ?)
       ON CONFLICT(student_id, test_id) DO UPDATE SET score = excluded.score`);
@@ -225,6 +238,7 @@ app.post('/api/scores/bulk-import', (req, res) => {
   });
 });
 
+// توجيه أي مسار آخر إلى الصفحة الرئيسية
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
