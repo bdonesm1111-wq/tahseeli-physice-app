@@ -9,8 +9,8 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// خدمة الملفات الثابتة من مجلد public
-app.use(express.static(path.join(__dirname, 'public')));
+// قراءة الملفات الثابتة من المجلد الرئيسي مباشرة
+app.use(express.static(path.join(__dirname)));
 
 app.use(session({
   secret: 'physics-secret-key-2026',
@@ -238,9 +238,9 @@ app.post('/api/scores/bulk-import', (req, res) => {
   });
 });
 
-// توجيه أي مسار آخر إلى الصفحة الرئيسية
+// توجيه أي مسار رئيسي إلى index.html في المجلد الرئيسي
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
