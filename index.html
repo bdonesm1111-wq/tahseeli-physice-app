@@ -114,6 +114,9 @@
         <label>اختر اسمكِ للتأدية:</label>
         <select id="studentSelect"><option value="">-- اختاري اسمكِ --</option></select>
 
+        <label>الرمز السرّي للطالبة (آخر 4 أرقام من الهوية / الرقم الخاص):</label>
+        <input type="password" id="studentPin" placeholder="أدخلي رمزكِ السرّي">
+
         <label>اختر الاختبار:</label>
         <select id="testSelect"><option value="">-- اختاري الاختبار --</option></select>
 
@@ -147,14 +150,15 @@
 
         <hr style="margin: 15px 0; border: none; border-top: 1px solid #e2e8f0;">
         
-        <h4>📥 1. استيراد أسماء الطالبات من Excel:</h4>
+        <h4>📥 1. استيراد أسماء الطالبات مع الرمز السري:</h4>
+        <p style="font-size: 12px; color: #666; margin-bottom: 5px;">الصقي البيانات بصيغة: <b>اسم الطالبة - الرمز</b> (اسم في كل سطر)</p>
         <select id="importClass">
           <option value="أ">فصل (أ)</option>
           <option value="ب">فصل (ب)</option>
           <option value="ج">فصل (ج)</option>
           <option value="د">فصل (د)</option>
         </select>
-        <textarea id="importNames" rows="3" placeholder="انسخي قائمة الأسماء هنا.. اسم في كل سطر"></textarea>
+        <textarea id="importNames" rows="4" placeholder="سارة أحمد علي - 1234&#10;نورة محمد - 5678"></textarea>
         <button class="btn" onclick="importStudents()">حفظ واستيراد الأسماء</button>
 
         <hr style="margin: 15px 0; border: none; border-top: 1px solid #e2e8f0;">
@@ -277,17 +281,25 @@
     async function importStudents() {
       const className = document.getElementById('importClass').value;
       const rawText = document.getElementById('importNames').value;
-      const names = rawText.split('\n').map(n => n.trim()).filter(n => n.length > 0);
+      const lines = rawText.split('\n').map(n => n.trim()).filter(n => n.length > 0);
 
-      if (names.length === 0) return alert('الرجاء أدخلي أسماء أولاً');
+      const students = [];
+      lines.forEach(line => {
+        const parts = line.split('-');
+        const name = parts[0].trim();
+        const pin = parts[1] ? parts[1].trim() : '1234';
+        if (name) students.push({ name, pin });
+      });
+
+      if (students.length === 0) return alert('الرجاء أدخلي أسماء أولاً');
 
       const res = await fetch('/api/students/bulk', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ class_name: className, names })
+        body: JSON.stringify({ class_name: className, students })
       });
 
       if (res.ok) {
-        alert('تم استيراد الأسماء بنجاح!');
+        alert('تم استيراد الأسماء والرموز السريّة بنجاح!');
         document.getElementById('importNames').value = '';
         loadData();
       } else { alert('حدث خطأ أثناء الاستيراد'); }
@@ -392,9 +404,21 @@
 
     async function startQuiz() {
       const studentId = document.getElementById('studentSelect').value;
+      const pin = document.getElementById('studentPin').value;
       const testId = document.getElementById('testSelect').value;
 
-      if (!studentId || !testId) return alert('اختر اسم الطالبة والاختبار أولاً');
+      if (!studentId || !pin || !testId) return alert('يرجى اختيار اسم الطالبة وإدخال الرمز السري واختيار الاختبار');
+
+      // التحقق من الرمز السري أولاً
+      const authRes = await fetch('/api/students/verify-pin', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ student_id: studentId, pin })
+      });
+
+      const authData = await authRes.json();
+      if (!authRes.ok || !authData.valid) {
+        return alert('الرمز السري غير صحيح! يرجى التأكد وإعادة المحاولة.');
+      }
 
       const res = await fetch(`/api/tests/${testId}/questions`);
       const data = await res.json();
