@@ -7,6 +7,7 @@ const app = express();
 const db = new Database("data.sqlite");
 db.pragma("foreign_keys = ON");
 
+// إنشاء الجداول (الطلاب، الاختبارات، الأسئلة، والدرجات)
 db.exec(`
 CREATE TABLE IF NOT EXISTS students (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -19,8 +20,19 @@ CREATE TABLE IF NOT EXISTS tests (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
   max_score REAL NOT NULL DEFAULT 100,
-  test_date TEXT DEFAULT CURRENT_DATE,
+  is_active INTEGER DEFAULT 1,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS questions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  test_id INTEGER NOT NULL REFERENCES tests(id) ON DELETE CASCADE,
+  question_text TEXT NOT NULL,
+  option_a TEXT NOT NULL,
+  option_b TEXT NOT NULL,
+  option_c TEXT NOT NULL,
+  option_d TEXT NOT NULL,
+  correct_option TEXT NOT NULL CHECK(correct_option IN ('A','B','C','D'))
 );
 
 CREATE TABLE IF NOT EXISTS scores (
@@ -65,6 +77,7 @@ app.get("/api/auth-check", (req, res) => {
   res.json({ isAdmin: !!(req.session && req.session.isAdmin) });
 });
 
+// جلب البيانات العامة وجدول الصدارة
 app.get("/api/data", (req, res) => {
   const students = db.prepare("SELECT * FROM students").all();
   const tests = db.prepare("SELECT * FROM tests ORDER BY id ASC").all();
@@ -90,7 +103,7 @@ app.get("/api/data", (req, res) => {
   res.json({ leaderboard, tests, totalStudents: students.length, totalTests: tests.length });
 });
 
-// مسار الاستيراد الجماعي للأسماء
+// استيراد أسماء الطالبات دفعة واحدة
 app.post("/api/students/bulk", checkAdmin, (req, res) => {
   const { class_name, names } = req.body;
   if (!['أ','ب','ج','د'].includes(class_name) || !Array.isArray(names)) {
@@ -108,11 +121,98 @@ app.post("/api/students/bulk", checkAdmin, (req, res) => {
   res.json({ ok: true, count: names.length });
 });
 
-app.post("/api/tests", checkAdmin, (req, res) => {
-  const { name, max_score } = req.body;
-  if (!name) return res.status(400).json({ error: "الاسم مطلوب" });
-  db.prepare("INSERT INTO tests (name, max_score) VALUES (?, ?)").run(name, max_score || 100);
-  res.json({ ok: true });
+// إضافة اختبار جديد مع أسئلته
+app.post("/api/tests/full", checkAdmin, (req, res) => {
+  const { name, max_score, questions } = req.body;
+  if (!name) return res.status(400).json({ error: "اسم الاختبار مطلوب" });
+
+  const insertTest = db.prepare("INSERT INTO tests (name, max_score) VALUES (?, ?)");
+  const insertQuestion = db.prepare(`
+    INSERT INTO questions (test_id, question_text, option_a, option_b, option_c, option_d, correct_option)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  const createFullTest = db.transaction(() => {
+    const info = insertTest.run(name, max_score || 100);
+    const testId = info.lastInsertRowid;
+
+    if (Array.isArray(questions)) {
+      for (const q of questions) {
+        insertQuestion.run(testId, q.text, q.a, q.b, q.c, q.d, q.correct);
+      }
+    }
+    return testId;
+  });
+
+  const testId = createFullTest();
+  res.json({ ok: true, testId });
+});
+
+// استيراد درجات من Google Forms (الاسم + الدرجة)
+app.post("/api/scores/bulk-import", checkAdmin, (req, res) => {
+  const { test_id, rows } = req.body; // rows = [{ name: '...', score: 90 }]
+  if (!test_id || !Array.isArray(rows)) return res.status(400).json({ error: "بيانات غير مكتمة" });
+
+  const students = db.prepare("SELECT * FROM students").all();
+  const insertScore = db.prepare(`
+    INSERT INTO scores (student_id, test_id, score) VALUES (?, ?, ?)
+    ON CONFLICT(student_id, test_id) DO UPDATE SET score = excluded.score
+  `);
+
+  let matched = 0;
+  const processScores = db.transaction(() => {
+    for (const r of rows) {
+      const student = students.find(s => s.name.trim() === r.name.trim());
+      if (student && r.score !== "" && !isNaN(r.score)) {
+        insertScore.run(student.id, test_id, Number(r.score));
+        matched++;
+      }
+    }
+  });
+
+  processScores();
+  res.json({ ok: true, matched });
+});
+
+// جلب أسئلة اختبار معين للطالبة
+app.get("/api/tests/:id/questions", (req, res) => {
+  const questions = db.prepare(`
+    SELECT id, question_text, option_a, option_b, option_c, option_d 
+    FROM questions WHERE test_id = ?
+  `).all(req.params.id);
+  res.json({ questions });
+});
+
+// تقديم الطالبة للاختبار والتصحيح التلقائي
+app.post("/api/tests/:id/submit", (req, res) => {
+  const { student_id, answers } = req.body; // answers = { question_id: 'A' }
+  const testId = req.params.id;
+
+  const test = db.prepare("SELECT * FROM tests WHERE id = ?").get(testId);
+  if (!test) return res.status(404).json({ error: "الاختبار غير موجود" });
+
+  // التأكد من عدم الحل المسبق
+  const existingScore = db.prepare("SELECT * FROM scores WHERE student_id = ? AND test_id = ?").get(student_id, testId);
+  if (existingScore) return res.status(400).json({ error: "لقد قمتِ بحل هذا الاختبار من قبل!" });
+
+  const questions = db.prepare("SELECT * FROM questions WHERE test_id = ?").all(testId);
+  if (questions.length === 0) return res.status(400).json({ error: "لا توجد أسئلة لهذا الاختبار" });
+
+  let correctCount = 0;
+  for (const q of questions) {
+    if (answers[q.id] && answers[q.id] === q.correct_option) {
+      correctCount++;
+    }
+  }
+
+  const scorePerQuestion = test.max_score / questions.length;
+  const finalScore = Number((correctCount * scorePerQuestion).toFixed(2));
+
+  db.prepare(`
+    INSERT INTO scores (student_id, test_id, score) VALUES (?, ?, ?)
+  `).run(student_id, testId, finalScore);
+
+  res.json({ ok: true, score: finalScore, total: test.max_score, correctCount, totalQuestions: questions.length });
 });
 
 app.post("/api/scores", checkAdmin, (req, res) => {
