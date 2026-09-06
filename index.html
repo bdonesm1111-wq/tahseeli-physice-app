@@ -59,9 +59,7 @@
       font-size: 14px;
       font-weight: 500;
     }
-    .footer span {
-      color: #e25822;
-    }
+    .footer span { color: #e25822; }
   </style>
 </head>
 <body>
@@ -122,7 +120,6 @@
         <button class="btn" onclick="startQuiz()">بدء الاختبار</button>
       </div>
 
-      <!-- منطقة الأسئلة (تظهر عند البدء) -->
       <div id="quizArea" style="display: none; margin-top: 15px;">
         <h4 id="quizTitle" style="margin-bottom: 15px;"></h4>
         <div id="questionsContainer"></div>
@@ -165,13 +162,13 @@
         <h4>📊 2. استيراد درجات من Google Forms:</h4>
         <label>حدد الاختبار المراد تنزيل الدرجات له:</label>
         <select id="gfTestSelect"></select>
-        <label>انسخي عمود الأسماء والدرجات من Excel النموذج واصقيهما هنا (الاسم [ثم مسافة أو tab] الدرجة):</label>
+        <label>انسخي عمود الأسماء والدرجات من Excel النموذج واصقيهما هنا:</label>
         <textarea id="gfScoresText" rows="3" placeholder="سارة أحمد 95&#10;نورة علي 100"></textarea>
         <button class="btn btn-secondary" onclick="importGoogleForms()">ربط واستيراد الدرجات</button>
 
         <hr style="margin: 15px 0; border: none; border-top: 1px solid #e2e8f0;">
 
-        <h4>➕ 3. إنشاء اختبار تفاعلي أونلاين:</h4>
+        <h4>➕ 3. إنشاء اختبار تفاعلي / ورقي جديد:</h4>
         <input type="text" id="newTestName" placeholder="عنوان الاختبار (مثال: اختبار السرعة والتسارع)">
         <input type="number" id="newTestMax" placeholder="الدرجة الكلية (مثال: 100)" value="100">
         
@@ -193,6 +190,13 @@
         </div>
         <button class="btn btn-secondary" onclick="addQuestionBox()">+ إضافة سؤال آخر</button>
         <button class="btn" onclick="saveFullTest()" style="margin-top: 10px;">حفظ ونشر الاختبار</button>
+
+        <hr style="margin: 15px 0; border: none; border-top: 1px solid #e2e8f0;">
+
+        <h4 style="color: #e74c3c;">🗑️ 4. حذف اختبار:</h4>
+        <label>اختر الاختبار المراد حذفه نهائياً:</label>
+        <select id="deleteTestSelect"></select>
+        <button class="btn btn-danger" onclick="deleteTest()">حذف الاختبار بالكامل</button>
       </div>
     </div>
 
@@ -257,12 +261,16 @@
 
       const tSel = document.getElementById('testSelect');
       const gfSel = document.getElementById('gfTestSelect');
+      const delSel = document.getElementById('deleteTestSelect');
+
       tSel.innerHTML = '<option value="">-- اختاري الاختبار --</option>';
       gfSel.innerHTML = '';
+      delSel.innerHTML = '<option value="">-- اختر الاختبار للحذف --</option>';
 
       currentData.tests.forEach(t => {
         tSel.innerHTML += `<option value="${t.id}">${t.name}</option>`;
         gfSel.innerHTML += `<option value="${t.id}">${t.name}</option>`;
+        delSel.innerHTML += `<option value="${t.id}">${t.name}</option>`;
       });
     }
 
@@ -339,6 +347,21 @@
       }
     }
 
+    async function deleteTest() {
+      const testId = document.getElementById('deleteTestSelect').value;
+      if (!testId) return alert('يرجى اختيار الاختبار المراد حذفه');
+
+      if (confirm('هل أنتِ متأكدة من حذف هذا الاختبار وجميع الدرجات المرتبطة به؟')) {
+        const res = await fetch(`/api/tests/${testId}`, { method: 'DELETE' });
+        if (res.ok) {
+          alert('تم حذف الاختبار ودرجاته بنجاح!');
+          loadData();
+        } else {
+          alert('حدث خطأ أثناء الحذف');
+        }
+      }
+    }
+
     async function importGoogleForms() {
       const test_id = document.getElementById('gfTestSelect').value;
       const text = document.getElementById('gfScoresText').value;
@@ -376,7 +399,7 @@
       const res = await fetch(`/api/tests/${testId}/questions`);
       const data = await res.json();
 
-      if (data.questions.length === 0) return alert('هذا الاختبار لا يحتوي على أسئلة أونلاين بعد');
+      if (data.questions.length === 0) return alert('هذا الاختبار لا يحتوي على أسئلة أونلاين (اختبار ورقي)');
 
       document.getElementById('studentQuizPortal').style.display = 'none';
       const qArea = document.getElementById('quizArea');
