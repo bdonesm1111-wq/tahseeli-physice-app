@@ -7,7 +7,6 @@ const app = express();
 const db = new Database("data.sqlite");
 db.pragma("foreign_keys = ON");
 
-// 1. إنشاء الجداول في قاعدة البيانات
 db.exec(`
 CREATE TABLE IF NOT EXISTS students (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -48,7 +47,6 @@ function checkAdmin(req, res, next) {
   res.status(401).json({ error: "غير مصرح" });
 }
 
-// 2. مسارات التحقق والأدمن
 app.post("/api/login", (req, res) => {
   if (req.body.password === ADMIN_PASS) {
     req.session.isAdmin = true;
@@ -67,7 +65,6 @@ app.get("/api/auth-check", (req, res) => {
   res.json({ isAdmin: !!(req.session && req.session.isAdmin) });
 });
 
-// 3. مسارات بيانات الطلاب والاختبارات
 app.get("/api/data", (req, res) => {
   const students = db.prepare("SELECT * FROM students").all();
   const tests = db.prepare("SELECT * FROM tests ORDER BY id ASC").all();
@@ -93,27 +90,28 @@ app.get("/api/data", (req, res) => {
   res.json({ leaderboard, tests, totalStudents: students.length, totalTests: tests.length });
 });
 
-app.post("/api/students", checkAdmin, (req, res) => {
-  const { name, class_name } = req.body;
-  if (!name || !['أ','ب','ج','د'].includes(class_name)) return res.status(400).json({ error: "بيانات ناقصة" });
-  db.prepare("INSERT INTO students (name, class_name) VALUES (?, ?)").run(name, class_name);
-  res.json({ ok: true });
-});
+// مسار الاستيراد الجماعي للأسماء
+app.post("/api/students/bulk", checkAdmin, (req, res) => {
+  const { class_name, names } = req.body;
+  if (!['أ','ب','ج','د'].includes(class_name) || !Array.isArray(names)) {
+    return res.status(400).json({ error: "بيانات غير صالحة" });
+  }
 
-app.delete("/api/students/:id", checkAdmin, (req, res) => {
-  db.prepare("DELETE FROM students WHERE id = ?").run(req.params.id);
-  res.json({ ok: true });
+  const insert = db.prepare("INSERT INTO students (name, class_name) VALUES (?, ?)");
+  const insertMany = db.transaction((studentList) => {
+    for (const name of studentList) {
+      if (name && name.trim()) insert.run(name.trim(), class_name);
+    }
+  });
+
+  insertMany(names);
+  res.json({ ok: true, count: names.length });
 });
 
 app.post("/api/tests", checkAdmin, (req, res) => {
   const { name, max_score } = req.body;
   if (!name) return res.status(400).json({ error: "الاسم مطلوب" });
   db.prepare("INSERT INTO tests (name, max_score) VALUES (?, ?)").run(name, max_score || 100);
-  res.json({ ok: true });
-});
-
-app.delete("/api/tests/:id", checkAdmin, (req, res) => {
-  db.prepare("DELETE FROM tests WHERE id = ?").run(req.params.id);
   res.json({ ok: true });
 });
 
@@ -130,13 +128,11 @@ app.post("/api/scores", checkAdmin, (req, res) => {
   res.json({ ok: true });
 });
 
-// 4. توجيه الواجهة الرئيسية من المجلد الحالي مباشرة
 app.use(express.static(__dirname));
 
 app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
-// 5. تشغيل السيرفر
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`App running on port ${PORT}`));
