@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>تحدي التحصيلي فيزياء٢</title>
+  <title>تحدي التحصيلي فيزياء</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap">
   <style>
     :root { --primary: #2d5a27; --primary-light: #4a7c43; --bg: #f4f6f8; --card-bg: #ffffff; --text: #2c3e50; }
@@ -51,13 +51,24 @@
     .question-box { background: #f8fafc; padding: 15px; border-radius: 10px; border: 1px solid #e2e8f0; margin-bottom: 15px; }
     .option-group { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
     .option-group input[type="radio"] { width: auto; margin: 0; }
+
+    .footer {
+      text-align: center;
+      padding: 20px 0 10px 0;
+      color: #718096;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .footer span {
+      color: #e25822;
+    }
   </style>
 </head>
 <body>
 
   <div class="container">
     <div class="header-card">
-      <h1>🏆 تحدي التحصيلي فيزياء٢</h1>
+      <h1>🏆 تحدي التحصيلي فيزياء</h1>
       <p>متابعة نتائج واختبارات الطالبة بشكل أسبوعي</p>
     </div>
 
@@ -108,7 +119,7 @@
         <label>اختر الاختبار:</label>
         <select id="testSelect"><option value="">-- اختاري الاختبار --</option></select>
 
-        <button class="btn" onclick="startQuiz()">الفيصل في التحدي (بدء الاختبار)</button>
+        <button class="btn" onclick="startQuiz()">بدء الاختبار</button>
       </div>
 
       <!-- منطقة الأسئلة (تظهر عند البدء) -->
@@ -184,6 +195,12 @@
         <button class="btn" onclick="saveFullTest()" style="margin-top: 10px;">حفظ ونشر الاختبار</button>
       </div>
     </div>
+
+    <!-- الحقوق والذيل -->
+    <div class="footer">
+      صُنِعَ بحب بواسطة <b>صفاء صميلي</b> <span>❤️</span>
+    </div>
+
   </div>
 
   <script>
@@ -232,14 +249,12 @@
     }
 
     function populateDropdowns() {
-      // قائمة الطلاب للاختبار
       const stSel = document.getElementById('studentSelect');
       stSel.innerHTML = '<option value="">-- اختاري اسمكِ --</option>';
       currentData.leaderboard.forEach(s => {
         stSel.innerHTML += `<option value="${s.id}">${s.name} (فصل ${s.class_name})</option>`;
       });
 
-      // قائمة الاختبارات
       const tSel = document.getElementById('testSelect');
       const gfSel = document.getElementById('gfTestSelect');
       tSel.innerHTML = '<option value="">-- اختاري الاختبار --</option>';
