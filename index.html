@@ -9,7 +9,7 @@
     :root { --primary: #2d5a27; --primary-light: #4a7c43; --bg: #f4f6f8; --card-bg: #ffffff; --text: #2c3e50; }
     * { box-sizing: border-box; font-family: 'Tajawal', sans-serif; margin: 0; padding: 0; }
     body { background-color: var(--bg); color: var(--text); padding: 15px; direction: rtl; }
-    .container { max-width: 800px; margin: 0 auto; }
+    .container { max-width: 850px; margin: 0 auto; }
     
     .header-card {
       background: linear-gradient(135deg, var(--primary), var(--primary-light));
@@ -18,9 +18,9 @@
     }
     .header-card h1 { font-size: 26px; font-weight: 800; margin-bottom: 8px; }
 
-    .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+    .stats-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 20px; }
     .stat-card { background: var(--card-bg); padding: 15px; border-radius: 16px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
-    .stat-card .num { font-size: 24px; font-weight: 800; color: var(--primary); }
+    .stat-card .num { font-size: 22px; font-weight: 800; color: var(--primary); }
     .stat-card .label { font-size: 13px; color: #7f8c8d; margin-top: 4px; }
 
     .tabs { display: flex; gap: 8px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 5px; }
@@ -44,21 +44,21 @@
     input, select, textarea { width: 100%; padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 14px; margin-top: 6px; margin-bottom: 12px; }
     .btn { width: 100%; padding: 12px; border: none; border-radius: 10px; background: var(--primary); color: white; font-weight: 700; cursor: pointer; margin-top: 5px; }
     .btn-secondary { background: #475569; }
+    .btn-success { background: #27ae60; }
     .btn-danger { background: #e74c3c; }
     .score-input { width: 60px; text-align: center; padding: 6px; }
     .admin-dashed { border: 2px dashed #cbd5e1; background: #fafafa; }
     
     .question-box { background: #f8fafc; padding: 15px; border-radius: 10px; border: 1px solid #e2e8f0; margin-bottom: 15px; }
+    .q-img { max-width: 100%; max-height: 250px; border-radius: 8px; margin: 10px 0; display: block; border: 1px solid #cbd5e1; }
     .option-group { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
     .option-group input[type="radio"] { width: auto; margin: 0; }
 
-    .footer {
-      text-align: center;
-      padding: 20px 0 10px 0;
-      color: #718096;
-      font-size: 14px;
-      font-weight: 500;
-    }
+    .analytics-card { background: #fff; border-right: 4px solid var(--primary); padding: 12px; margin-bottom: 10px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.02); }
+    .progress-bar { background: #e2e8f0; border-radius: 8px; height: 12px; width: 100%; overflow: hidden; margin-top: 5px; }
+    .progress-fill { background: var(--primary); height: 100%; }
+
+    .footer { text-align: center; padding: 20px 0 10px 0; color: #718096; font-size: 14px; font-weight: 500; }
     .footer span { color: #e25822; }
   </style>
 </head>
@@ -78,6 +78,10 @@
       <div class="stat-card">
         <div class="label">عدد الاختبارات</div>
         <div class="num" id="totalTests">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">👁️ عدد الزوار</div>
+        <div class="num" id="visitCount">0</div>
       </div>
     </div>
 
@@ -114,7 +118,7 @@
         <label>اختر اسمكِ للتأدية:</label>
         <select id="studentSelect"><option value="">-- اختاري اسمكِ --</option></select>
 
-        <label>الرمز السرّي للطالبة (آخر 4 أرقام من الهوية / الرقم الخاص):</label>
+        <label>الرمز السرّي للطالبة (آخر 4 أرقام من الهوية):</label>
         <input type="password" id="studentPin" placeholder="أدخلي رمزكِ السرّي">
 
         <label>اختر الاختبار:</label>
@@ -149,36 +153,47 @@
         </div>
 
         <hr style="margin: 15px 0; border: none; border-top: 1px solid #e2e8f0;">
+
+        <h4>📥 تصدير الدرجات:</h4>
+        <button class="btn btn-success" onclick="exportToCSV()" style="margin-top: 8px;">📊 تصدير كشف الدرجات الكامل (Excel / CSV)</button>
+
+        <hr style="margin: 15px 0; border: none; border-top: 1px solid #e2e8f0;">
+
+        <h4>📈 تحليل وإحصائيات الأسئلة:</h4>
+        <label>اختر الاختبار لعرض تحليل الإجابات:</label>
+        <select id="analyticsTestSelect" onchange="loadAnalytics()"><option value="">-- اختر اختباراً --</option></select>
+        <div id="analyticsResults" style="margin-top: 10px;"></div>
+
+        <hr style="margin: 15px 0; border: none; border-top: 1px solid #e2e8f0;">
         
         <h4>📥 1. استيراد أسماء الطالبات مع الرمز السري:</h4>
-        <p style="font-size: 12px; color: #666; margin-bottom: 5px;">الصقي البيانات بصيغة: <b>اسم الطالبة - الرمز</b> (اسم في كل سطر)</p>
+        <p style="font-size: 12px; color: #666; margin-bottom: 5px;">الصقي البيانات بصيغة: <b>اسم الطالبة - الرمز</b></p>
         <select id="importClass">
           <option value="أ">فصل (أ)</option>
           <option value="ب">فصل (ب)</option>
           <option value="ج">فصل (ج)</option>
           <option value="د">فصل (د)</option>
         </select>
-        <textarea id="importNames" rows="4" placeholder="سارة أحمد علي - 1234&#10;نورة محمد - 5678"></textarea>
+        <textarea id="importNames" rows="3" placeholder="سارة أحمد علي - 1234&#10;نورة محمد - 5678"></textarea>
         <button class="btn" onclick="importStudents()">حفظ واستيراد الأسماء</button>
 
         <hr style="margin: 15px 0; border: none; border-top: 1px solid #e2e8f0;">
 
         <h4>📊 2. استيراد درجات من Google Forms:</h4>
-        <label>حدد الاختبار المراد تنزيل الدرجات له:</label>
         <select id="gfTestSelect"></select>
-        <label>انسخي عمود الأسماء والدرجات من Excel النموذج واصقيهما هنا:</label>
         <textarea id="gfScoresText" rows="3" placeholder="سارة أحمد 95&#10;نورة علي 100"></textarea>
         <button class="btn btn-secondary" onclick="importGoogleForms()">ربط واستيراد الدرجات</button>
 
         <hr style="margin: 15px 0; border: none; border-top: 1px solid #e2e8f0;">
 
-        <h4>➕ 3. إنشاء اختبار تفاعلي / ورقي جديد:</h4>
+        <h4>➕ 3. إنشاء اختبار تفاعلي مع إمكانية إضافة صور:</h4>
         <input type="text" id="newTestName" placeholder="عنوان الاختبار (مثال: اختبار السرعة والتسارع)">
-        <input type="number" id="newTestMax" placeholder="الدرجة الكلية (مثال: 100)" value="100">
+        <input type="number" id="newTestMax" placeholder="الدرجة الكلية" value="100">
         
         <div id="builderQuestions">
           <div class="question-box">
             <input type="text" class="q-text" placeholder="نص السؤال 1">
+            <input type="text" class="q-img-url" placeholder="رابط صورة السؤال (اختياري)">
             <input type="text" class="q-a" placeholder="الخيار A">
             <input type="text" class="q-b" placeholder="الخيار B">
             <input type="text" class="q-c" placeholder="الخيار C">
@@ -198,13 +213,11 @@
         <hr style="margin: 15px 0; border: none; border-top: 1px solid #e2e8f0;">
 
         <h4 style="color: #e74c3c;">🗑️ 4. حذف اختبار:</h4>
-        <label>اختر الاختبار المراد حذفه نهائياً:</label>
         <select id="deleteTestSelect"></select>
         <button class="btn btn-danger" onclick="deleteTest()">حذف الاختبار بالكامل</button>
       </div>
     </div>
 
-    <!-- الحقوق والذيل -->
     <div class="footer">
       صُنِعَ بحب بواسطة <b>صفاء صميلي</b> <span>❤️</span>
     </div>
@@ -251,6 +264,7 @@
       currentData = await res.json();
       document.getElementById('totalStudents').innerText = currentData.totalStudents;
       document.getElementById('totalTests').innerText = currentData.totalTests;
+      document.getElementById('visitCount').innerText = currentData.visits || 1;
       
       populateDropdowns();
       renderTable();
@@ -266,15 +280,18 @@
       const tSel = document.getElementById('testSelect');
       const gfSel = document.getElementById('gfTestSelect');
       const delSel = document.getElementById('deleteTestSelect');
+      const anSel = document.getElementById('analyticsTestSelect');
 
       tSel.innerHTML = '<option value="">-- اختاري الاختبار --</option>';
       gfSel.innerHTML = '';
       delSel.innerHTML = '<option value="">-- اختر الاختبار للحذف --</option>';
+      anSel.innerHTML = '<option value="">-- اختر اختباراً للتحليل --</option>';
 
       currentData.tests.forEach(t => {
         tSel.innerHTML += `<option value="${t.id}">${t.name}</option>`;
         gfSel.innerHTML += `<option value="${t.id}">${t.name}</option>`;
         delSel.innerHTML += `<option value="${t.id}">${t.name}</option>`;
+        anSel.innerHTML += `<option value="${t.id}">${t.name}</option>`;
       });
     }
 
@@ -302,7 +319,7 @@
         alert('تم استيراد الأسماء والرموز السريّة بنجاح!');
         document.getElementById('importNames').value = '';
         loadData();
-      } else { alert('حدث خطأ أثناء الاستيراد'); }
+      }
     }
 
     function addQuestionBox() {
@@ -310,6 +327,7 @@
       qBox.className = 'question-box';
       qBox.innerHTML = `
         <input type="text" class="q-text" placeholder="نص السؤال">
+        <input type="text" class="q-img-url" placeholder="رابط صورة السؤال (اختياري)">
         <input type="text" class="q-a" placeholder="الخيار A">
         <input type="text" class="q-b" placeholder="الخيار B">
         <input type="text" class="q-c" placeholder="الخيار C">
@@ -338,6 +356,7 @@
         if (text) {
           questions.push({
             text,
+            image_url: box.querySelector('.q-img-url').value,
             a: box.querySelector('.q-a').value,
             b: box.querySelector('.q-b').value,
             c: box.querySelector('.q-c').value,
@@ -365,12 +384,14 @@
 
       if (confirm('هل أنتِ متأكدة من حذف هذا الاختبار وجميع الدرجات المرتبطة به؟')) {
         const res = await fetch(`/api/tests/${testId}`, { method: 'DELETE' });
-        if (res.ok) {
-          alert('تم حذف الاختبار ودرجاته بنجاح!');
-          loadData();
-        } else {
-          alert('حدث خطأ أثناء الحذف');
-        }
+        if (res.ok) { alert('تم حذف الاختبار بنجاح!'); loadData(); }
+      }
+    }
+
+    async function deleteStudent(id, name) {
+      if (confirm(`هل أنتِ متأكدة من حذف الطالبة (${name}) وجميع درجاتها؟`)) {
+        const res = await fetch(`/api/students/${id}`, { method: 'DELETE' });
+        if (res.ok) { alert('تم حذف الطالبة بنجاح!'); loadData(); }
       }
     }
 
@@ -381,12 +402,9 @@
 
       const lines = text.split('\n');
       const rows = [];
-
       lines.forEach(line => {
         const parts = line.trim().split(/[\t,]+/);
-        if (parts.length >= 2) {
-          rows.push({ name: parts[0].trim(), score: parts[1].trim() });
-        }
+        if (parts.length >= 2) rows.push({ name: parts[0].trim(), score: parts[1].trim() });
       });
 
       const res = await fetch('/api/scores/bulk-import', {
@@ -409,33 +427,31 @@
 
       if (!studentId || !pin || !testId) return alert('يرجى اختيار اسم الطالبة وإدخال الرمز السري واختيار الاختبار');
 
-      // التحقق من الرمز السري أولاً
       const authRes = await fetch('/api/students/verify-pin', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ student_id: studentId, pin })
       });
 
       const authData = await authRes.json();
-      if (!authRes.ok || !authData.valid) {
-        return alert('الرمز السري غير صحيح! يرجى التأكد وإعادة المحاولة.');
-      }
+      if (!authRes.ok || !authData.valid) return alert('الرمز السري غير صحيح!');
 
       const res = await fetch(`/api/tests/${testId}/questions`);
       const data = await res.json();
 
-      if (data.questions.length === 0) return alert('هذا الاختبار لا يحتوي على أسئلة أونلاين (اختبار ورقي)');
+      if (data.questions.length === 0) return alert('هذا الاختبار لا يحتوي على أسئلة أونلاين');
 
       document.getElementById('studentQuizPortal').style.display = 'none';
-      const qArea = document.getElementById('quizArea');
-      qArea.style.display = 'block';
+      document.getElementById('quizArea').style.display = 'block';
 
       const qContainer = document.getElementById('questionsContainer');
       qContainer.innerHTML = '';
 
       data.questions.forEach((q, idx) => {
+        let imgHtml = q.image_url ? `<img src="${q.image_url}" class="q-img" alt="صورة السؤال">` : '';
         qContainer.innerHTML += `
           <div class="question-box" data-qid="${q.id}">
             <p style="font-weight:bold; margin-bottom:10px;">س${idx + 1}: ${q.question_text}</p>
+            ${imgHtml}
             <div class="option-group"><input type="radio" name="q_${q.id}" value="A"> أ) ${q.option_a}</div>
             <div class="option-group"><input type="radio" name="q_${q.id}" value="B"> ب) ${q.option_b}</div>
             <div class="option-group"><input type="radio" name="q_${q.id}" value="C"> ج) ${q.option_c}</div>
@@ -448,7 +464,6 @@
     async function submitQuiz() {
       const studentId = document.getElementById('studentSelect').value;
       const testId = document.getElementById('testSelect').value;
-
       const qBoxes = document.querySelectorAll('#questionsContainer .question-box');
       const answers = {};
 
@@ -464,12 +479,9 @@
       });
 
       const data = await res.json();
-
       if (res.ok) {
-        alert(`أحسنتِ! درجاتكِ في الاختبار هي: ${data.score} من ${data.total}\nتم تسجيل النتيجة في التحدي مباشرة!`);
+        alert(`أحسنتِ! درجاتكِ في الاختبار هي: ${data.score} من ${data.total}`);
         location.reload();
-      } else {
-        alert(data.error || 'حدث خطأ أثناء إرسال الإجابات');
       }
     }
 
@@ -479,6 +491,50 @@
         body: JSON.stringify({ student_id, test_id, score })
       });
       loadData();
+    }
+
+    async function loadAnalytics() {
+      const testId = document.getElementById('analyticsTestSelect').value;
+      const div = document.getElementById('analyticsResults');
+      if (!testId) return div.innerHTML = '';
+
+      const res = await fetch(`/api/tests/${testId}/analytics`);
+      const data = await res.json();
+
+      div.innerHTML = `<p style="font-weight:bold; margin-bottom:8px;">عدد الطالبات اللاتي أتممن الاختبار: ${data.totalSubmissions}</p>`;
+      
+      data.questions.forEach((q, idx) => {
+        let percent = q.total > 0 ? Math.round((q.correct / q.total) * 100) : 0;
+        div.innerHTML += `
+          <div class="analytics-card">
+            <div><b>س${idx + 1}: ${q.question_text}</b></div>
+            <div style="font-size:12px; color:#666; margin-top:4px;">الإجابات الصحيحة: ${q.correct} من ${q.total} (${percent}%)</div>
+            <div class="progress-bar"><div class="progress-fill" style="width: ${percent}%;"></div></div>
+          </div>
+        `;
+      });
+    }
+
+    function exportToCSV() {
+      if (!currentData) return;
+      let csvContent = "\uFEFFالرقم,اسم الطالبة,الفصل,";
+      currentData.tests.forEach(t => csvContent += `"${t.name}",`);
+      csvContent += "المجموع,المتوسط\n";
+
+      currentData.leaderboard.forEach((st, idx) => {
+        csvContent += `${idx + 1},"${st.name}","${st.class_name}",`;
+        currentData.tests.forEach(t => {
+          let score = st.scoresMap[t.id] !== undefined ? st.scoresMap[t.id] : '';
+          csvContent += `"${score}",`;
+        });
+        csvContent += `${st.total},${st.avg}\n`;
+      });
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "كشف_نتائج_تحدي_الفيزياء.csv";
+      link.click();
     }
 
     function renderTable() {
@@ -492,6 +548,7 @@
       headerRow.innerHTML = `<th>المركز</th><th>اسم الطالبة</th><th>الفصل</th>`;
       currentData.tests.forEach(t => { headerRow.innerHTML += `<th>${t.name}</th>`; });
       headerRow.innerHTML += `<th>المجموع</th><th>المتوسط</th>`;
+      if (isAdmin) { headerRow.innerHTML += `<th>حذف</th>`; }
 
       const tbody = document.getElementById('bodyRows');
       tbody.innerHTML = '';
@@ -514,7 +571,11 @@
           }
         });
 
-        row += `<td style="color:var(--primary); font-weight:bold;">${st.total}</td><td>${st.avg}</td></tr>`;
+        row += `<td style="color:var(--primary); font-weight:bold;">${st.total}</td><td>${st.avg}</td>`;
+        if (isAdmin) {
+          row += `<td><button class="btn btn-danger" style="padding: 4px 8px; font-size: 12px; width: auto;" onclick="deleteStudent(${st.id}, '${st.name}')">❌</button></td>`;
+        }
+        row += `</tr>`;
         tbody.innerHTML += row;
       });
     }
