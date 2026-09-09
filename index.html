@@ -3,639 +3,201 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>تحدي التحصيلي فيزياء</title>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap">
+  <title>لوحة درجات الطالبات والاختبارات</title>
+  <!-- مكتبة الأشكال الرسم البياني -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    :root { --primary: #2d5a27; --primary-light: #4a7c43; --bg: #f4f6f8; --card-bg: #ffffff; --text: #2c3e50; }
-    * { box-sizing: border-box; font-family: 'Tajawal', sans-serif; margin: 0; padding: 0; }
-    body { background-color: var(--bg); color: var(--text); padding: 15px; direction: rtl; }
-    .container { max-width: 850px; margin: 0 auto; }
-    
-    .header-card {
-      background: linear-gradient(135deg, var(--primary), var(--primary-light));
-      color: white; padding: 25px 20px; border-radius: 20px; text-align: center;
-      box-shadow: 0 10px 20px rgba(45, 90, 39, 0.15); margin-bottom: 20px;
-    }
-    .header-card h1 { font-size: 26px; font-weight: 800; margin-bottom: 8px; }
-
-    .stats-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 20px; }
-    .stat-card { background: var(--card-bg); padding: 15px; border-radius: 16px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
-    .stat-card .num { font-size: 22px; font-weight: 800; color: var(--primary); }
-    .stat-card .label { font-size: 13px; color: #7f8c8d; margin-top: 4px; }
-
-    .tabs { display: flex; gap: 8px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 5px; }
-    .tab-btn {
-      padding: 10px 18px; border-radius: 12px; border: none; background: #e2e8f0;
-      color: #4a5568; font-weight: 700; font-size: 14px; cursor: pointer; white-space: nowrap;
-    }
-    .tab-btn.active { background: var(--primary); color: white; }
-
-    .card { background: var(--card-bg); border-radius: 16px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); margin-bottom: 20px; }
-    .table-responsive { overflow-x: auto; margin-top: 10px; }
-    table { width: 100%; border-collapse: collapse; min-width: 500px; }
-    th { background: #f8fafc; color: #4a5568; padding: 12px; font-size: 13px; text-align: center; border-bottom: 2px solid #edf2f7; }
-    td { padding: 12px; font-size: 14px; text-align: center; border-bottom: 1px solid #edf2f7; }
-    
-    .rank-badge { display: inline-block; width: 28px; height: 28px; line-height: 28px; border-radius: 50%; font-weight: 800; font-size: 13px; }
-    .rank-1 { background: #fef08a; color: #854d0e; }
-    .rank-2 { background: #e2e8f0; color: #475569; }
-    .rank-3 { background: #ffedd5; color: #9a3412; }
-
-    input, select, textarea { width: 100%; padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 14px; margin-top: 6px; margin-bottom: 12px; }
-    .btn { width: 100%; padding: 12px; border: none; border-radius: 10px; background: var(--primary); color: white; font-weight: 700; cursor: pointer; margin-top: 5px; }
-    .btn-secondary { background: #475569; }
-    .btn-success { background: #27ae60; }
-    .btn-danger { background: #e74c3c; }
-    .score-input { width: 60px; text-align: center; padding: 6px; }
-    .admin-dashed { border: 2px dashed #cbd5e1; background: #fafafa; }
-    
-    .question-box { background: #f8fafc; padding: 15px; border-radius: 10px; border: 1px solid #e2e8f0; margin-bottom: 15px; }
-    .q-img { max-width: 100%; max-height: 250px; border-radius: 8px; margin: 10px 0; display: block; border: 1px solid #cbd5e1; }
-    .option-group { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-    .option-group input[type="radio"] { width: auto; margin: 0; }
-
-    .timer-box {
-      position: sticky; top: 10px; background: #e74c3c; color: white;
-      padding: 10px 15px; border-radius: 12px; text-align: center;
-      font-size: 18px; font-weight: bold; margin-bottom: 15px; z-index: 100;
-      box-shadow: 0 4px 10px rgba(231, 76, 60, 0.3);
+    :root {
+      --primary: #4F46E5;
+      --primary-hover: #4338CA;
+      --bg: #F9FAFB;
+      --card-bg: #FFFFFF;
+      --text: #1F2937;
+      --border: #E5E7EB;
     }
 
-    .analytics-card { background: #fff; border-right: 4px solid var(--primary); padding: 12px; margin-bottom: 10px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.02); }
-    .progress-bar { background: #e2e8f0; border-radius: 8px; height: 12px; width: 100%; overflow: hidden; margin-top: 5px; }
-    .progress-fill { background: var(--primary); height: 100%; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 20px;
+    }
 
-    .footer { text-align: center; padding: 20px 0 10px 0; color: #718096; font-size: 14px; font-weight: 500; display: none; }
-    .footer span { color: #e25822; }
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 25px;
+    }
+
+    .card {
+      background: var(--card-bg);
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+
+    .table-responsive {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 10px 14px;
+      text-align: center;
+    }
+
+    th {
+      background-color: #F3F4F6;
+      font-weight: 600;
+    }
+
+    .chart-container {
+      position: relative;
+      height: 320px;
+      width: 100%;
+    }
+
+    .badge {
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-weight: bold;
+      background-color: #EEF2FF;
+      color: var(--primary);
+    }
   </style>
 </head>
 <body>
 
-  <div class="container">
-    <div class="header-card">
-      <h1>🏆 تحدي التحصيلي فيزياء</h1>
-      <p>متابعة نتائج واختبارات الطالبة بشكل أسبوعي</p>
-    </div>
-
-    <div class="stats-grid">
-      <div class="stat-card">
-        <div class="label">إجمالي الطالبات</div>
-        <div class="num" id="totalStudents">0</div>
-      </div>
-      <div class="stat-card">
-        <div class="label">عدد الاختبارات</div>
-        <div class="num" id="totalTests">0</div>
-      </div>
-      <div class="stat-card">
-        <div class="label">👁️ عدد الزوار</div>
-        <div class="num" id="visitCount">0</div>
-      </div>
-    </div>
-
-    <div class="tabs">
-      <button class="tab-btn active" onclick="setFilter('الكل', this)">الترتيب العام</button>
-      <button class="tab-btn" onclick="setFilter('أ', this)">فصل (أ)</button>
-      <button class="tab-btn" onclick="setFilter('ب', this)">فصل (ب)</button>
-      <button class="tab-btn" onclick="setFilter('ج', this)">فصل (ج)</button>
-      <button class="tab-btn" onclick="setFilter('د', this)">فصل (د)</button>
-    </div>
-
-    <!-- جدول الصدارة -->
-    <div class="card">
-      <div class="table-responsive">
-        <table>
-          <thead>
-            <tr id="headerRow">
-              <th>المركز</th>
-              <th>اسم الطالبة</th>
-              <th>الفصل</th>
-              <th>المجموع</th>
-              <th>المتوسط</th>
-            </tr>
-          </thead>
-          <tbody id="bodyRows"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- قسم دخول الطالبة لتأدية اختبار -->
-    <div class="card" style="border: 2px solid var(--primary-light);">
-      <h3 style="color: var(--primary); margin-bottom: 10px;">📝 دخول الطالبة لحل الاختبار</h3>
-      <div id="studentQuizPortal">
-        <label>اختر اسمكِ للتأدية:</label>
-        <select id="studentSelect"><option value="">-- اختاري اسمكِ --</option></select>
-
-        <label>الرمز السرّي للطالبة (آخر 4 أرقام من الهوية):</label>
-        <input type="password" id="studentPin" placeholder="أدخلي رمزكِ السرّي">
-
-        <label>اختر الاختبار:</label>
-        <select id="testSelect"><option value="">-- اختاري الاختبار --</option></select>
-
-        <button class="btn" onclick="startQuiz()">بدء الاختبار</button>
-      </div>
-
-      <div id="quizArea" style="display: none; margin-top: 15px;">
-        <div id="timerBox" class="timer-box" style="display: none;">⏳ الوقت المتبقي: <span id="timeRemaining">--:--</span></div>
-        <h4 id="quizTitle" style="margin-bottom: 15px;"></h4>
-        <div id="questionsContainer"></div>
-        <button class="btn" id="submitBtn" onclick="submitQuiz()">إرسال الإجابات والنتيجة</button>
-      </div>
-    </div>
-
-    <!-- لوحة الإدارة -->
-    <div class="card admin-dashed">
-      <h3 style="margin-bottom: 10px;">⚙️ لوحة الإدارة</h3>
-      
-      <div id="loginSection">
-        <p style="font-size: 13px; color: #666; margin-bottom: 8px;">أدخلي كلمة المرور للتحكم بالبيانات:</p>
-        <div style="display: flex; gap: 8px;">
-          <input type="password" id="adminPass" placeholder="كلمة المرور" style="margin:0;">
-          <button class="btn" style="width: auto; padding: 0 20px;" onclick="login()">دخول</button>
-        </div>
-      </div>
-
-      <div id="adminControls" style="display: none;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-          <span style="color: #27ae60; font-weight: bold;">أهلاً بكِ أستاذة صفاء</span>
-          <button class="btn btn-danger" style="width: auto; padding: 6px 12px; margin:0;" onclick="logout()">خروج</button>
-        </div>
-
-        <hr style="margin: 15px 0; border: none; border-top: 1px solid #e2e8f0;">
-
-        <h4>📥 تصدير الدرجات:</h4>
-        <button class="btn btn-success" onclick="exportToCSV()" style="margin-top: 8px;">📊 تصدير كشف الدرجات الكامل (Excel / CSV)</button>
-
-        <hr style="margin: 15px 0; border: none; border-top: 1px solid #e2e8f0;">
-
-        <h4>📈 تحليل وإحصائيات الأسئلة:</h4>
-        <label>اختر الاختبار لعرض تحليل الإجابات:</label>
-        <select id="analyticsTestSelect" onchange="loadAnalytics()"><option value="">-- اختر اختباراً --</option></select>
-        <div id="analyticsResults" style="margin-top: 10px;"></div>
-
-        <hr style="margin: 15px 0; border: none; border-top: 1px solid #e2e8f0;">
-        
-        <h4>📥 1. استيراد أسماء الطالبات مع الرمز السري:</h4>
-        <p style="font-size: 12px; color: #666; margin-bottom: 5px;">الصقي البيانات بصيغة: <b>اسم الطالبة - الرمز</b></p>
-        <select id="importClass">
-          <option value="أ">فصل (أ)</option>
-          <option value="ب">فصل (ب)</option>
-          <option value="ج">فصل (ج)</option>
-          <option value="د">فصل (د)</option>
-        </select>
-        <textarea id="importNames" rows="3" placeholder="سارة أحمد علي - 1234&#10;نورة محمد - 5678"></textarea>
-        <button class="btn" onclick="importStudents()">حفظ واستيراد الأسماء</button>
-
-        <hr style="margin: 15px 0; border: none; border-top: 1px solid #e2e8f0;">
-
-        <h4>📊 2. استيراد درجات من Google Forms:</h4>
-        <select id="gfTestSelect"></select>
-        <textarea id="gfScoresText" rows="3" placeholder="سارة أحمد 95&#10;نورة علي 100"></textarea>
-        <button class="btn btn-secondary" onclick="importGoogleForms()">ربط واستيراد الدرجات</button>
-
-        <hr style="margin: 15px 0; border: none; border-top: 1px solid #e2e8f0;">
-
-        <h4>➕ 3. إنشاء اختبار تفاعلي مع تحديد مدة زمنية:</h4>
-        <input type="text" id="newTestName" placeholder="عنوان الاختبار (مثال: اختبار السرعة والتسارع)">
-        <input type="number" id="newTestMax" placeholder="الدرجة الكلية" value="100">
-        <input type="number" id="newTestDuration" placeholder="مدة الاختبار بالدقائق (مثلاً: 15 - اتركيه فارغاً إن لم ترغبي بمدة)">
-        
-        <div id="builderQuestions">
-          <div class="question-box">
-            <input type="text" class="q-text" placeholder="نص السؤال 1">
-            <input type="text" class="q-img-url" placeholder="رابط صورة السؤال (اختياري)">
-            <input type="text" class="q-a" placeholder="الخيار A">
-            <input type="text" class="q-b" placeholder="الخيار B">
-            <input type="text" class="q-c" placeholder="الخيار C">
-            <input type="text" class="q-d" placeholder="الخيار D">
-            <label style="font-size: 12px;">الإجابة الصحيحة:</label>
-            <select class="q-correct">
-              <option value="A">الخيار A</option>
-              <option value="B">الخيار B</option>
-              <option value="C">الخيار C</option>
-              <option value="D">الخيار D</option>
-            </select>
-          </div>
-        </div>
-        <button class="btn btn-secondary" onclick="addQuestionBox()">+ إضافة سؤال آخر</button>
-        <button class="btn" onclick="saveFullTest()" style="margin-top: 10px;">حفظ ونشر الاختبار</button>
-
-        <hr style="margin: 15px 0; border: none; border-top: 1px solid #e2e8f0;">
-
-        <h4 style="color: #e74c3c;">🗑️ 4. حذف اختبار:</h4>
-        <select id="deleteTestSelect"></select>
-        <button class="btn btn-danger" onclick="deleteTest()">حذف الاختبار بالكامل</button>
-      </div>
-    </div>
-
-    <!-- التوقيع السفلِي متوقف مؤقتاً برمجياً مع حفظ الإمكانية للعودة -->
-    <div class="footer" style="display: none;">
-      صُنِعَ بحب بواسطة <b>صفاء صميلي</b> <span>❤️</span>
-    </div>
-
+<div class="container">
+  <div class="header">
+    <h1>لوحة متابعة درجات الطالبات والأداء</h1>
   </div>
 
-  <script>
-    let currentFilter = 'الكل';
-    let currentData = null;
-    let isAdmin = false;
-    let quizTimer = null;
+  <!-- خانة التحليل البياني للفصول (تظهر للزائر وللجميع) -->
+  <div class="card">
+    <h3 style="text-align: center; margin-top: 0;">📊 مقارنة وترتيب الفصول بيائياً</h3>
+    <div class="chart-container">
+      <canvas id="publicClassChart"></canvas>
+    </div>
+  </div>
 
-    async function checkAuth() {
-      const res = await fetch('/api/auth-check');
+  <!-- جدول الدرجات الكلية للجميع -->
+  <div class="card">
+    <h3>📋 كشف درجات الطالبات</h3>
+    <div class="table-responsive">
+      <table id="scoresTable">
+        <thead>
+          <tr id="tableHeader">
+            <th>الاسم</th>
+            <th>الفصل</th>
+            <th>المجموع الكلي</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody">
+          <!-- سيتم تحميل البيانات هنا تلقائياً -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  // 1. تحميل وترسيم الرسم البياني للفصول
+  async function loadClassAnalytics() {
+    try {
+      const res = await fetch('/api/analytics/classes');
       const data = await res.json();
-      isAdmin = data.isAdmin;
-      document.getElementById('loginSection').style.display = isAdmin ? 'none' : 'block';
-      document.getElementById('adminControls').style.display = isAdmin ? 'block' : 'none';
-      loadData();
-    }
-
-    async function login() {
-      const password = document.getElementById('adminPass').value;
-      const res = await fetch('/api/login', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password })
-      });
-      if (res.ok) { checkAuth(); } else { alert('كلمة المرور خاطئة'); }
-    }
-
-    async function logout() {
-      await fetch('/api/logout', { method: 'POST' });
-      checkAuth();
-    }
-
-    function setFilter(cls, btn) {
-      currentFilter = cls;
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      renderTable();
-    }
-
-    async function loadData() {
-      const res = await fetch('/api/data');
-      currentData = await res.json();
-      document.getElementById('totalStudents').innerText = currentData.totalStudents;
-      document.getElementById('totalTests').innerText = currentData.totalTests;
-      document.getElementById('visitCount').innerText = currentData.visits || 1;
       
-      populateDropdowns();
-      renderTable();
-    }
+      if (!data.classComparison || data.classComparison.length === 0) return;
 
-    function populateDropdowns() {
-      const stSel = document.getElementById('studentSelect');
-      stSel.innerHTML = '<option value="">-- اختاري اسمكِ --</option>';
-      currentData.leaderboard.forEach(s => {
-        stSel.innerHTML += `<option value="${s.id}">${s.name} (فصل ${s.class_name})</option>`;
-      });
+      const labels = data.classComparison.map(c => 'فصل ' + c.class_name);
+      const averages = data.classComparison.map(c => c.average_score ? parseFloat(c.average_score.toFixed(1)) : 0);
 
-      const tSel = document.getElementById('testSelect');
-      const gfSel = document.getElementById('gfTestSelect');
-      const delSel = document.getElementById('deleteTestSelect');
-      const anSel = document.getElementById('analyticsTestSelect');
-
-      tSel.innerHTML = '<option value="">-- اختاري الاختبار --</option>';
-      gfSel.innerHTML = '';
-      delSel.innerHTML = '<option value="">-- اختر الاختبار للحذف --</option>';
-      anSel.innerHTML = '<option value="">-- اختر اختباراً للتحليل --</option>';
-
-      currentData.tests.forEach(t => {
-        tSel.innerHTML += `<option value="${t.id}">${t.name}</option>`;
-        gfSel.innerHTML += `<option value="${t.id}">${t.name}</option>`;
-        delSel.innerHTML += `<option value="${t.id}">${t.name}</option>`;
-        anSel.innerHTML += `<option value="${t.id}">${t.name}</option>`;
-      });
-    }
-
-    async function importStudents() {
-      const className = document.getElementById('importClass').value;
-      const rawText = document.getElementById('importNames').value;
-      const lines = rawText.split('\n').map(n => n.trim()).filter(n => n.length > 0);
-
-      const students = [];
-      lines.forEach(line => {
-        const parts = line.split('-');
-        const name = parts[0].trim();
-        const pin = parts[1] ? parts[1].trim() : '1234';
-        if (name) students.push({ name, pin });
-      });
-
-      if (students.length === 0) return alert('الرجاء أدخلي أسماء أولاً');
-
-      const res = await fetch('/api/students/bulk', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ class_name: className, students })
-      });
-
-      if (res.ok) {
-        alert('تم استيراد الأسماء والرموز السريّة بنجاح!');
-        document.getElementById('importNames').value = '';
-        loadData();
-      }
-    }
-
-    function addQuestionBox() {
-      const qBox = document.createElement('div');
-      qBox.className = 'question-box';
-      qBox.innerHTML = `
-        <input type="text" class="q-text" placeholder="نص السؤال">
-        <input type="text" class="q-img-url" placeholder="رابط صورة السؤال (اختياري)">
-        <input type="text" class="q-a" placeholder="الخيار A">
-        <input type="text" class="q-b" placeholder="الخيار B">
-        <input type="text" class="q-c" placeholder="الخيار C">
-        <input type="text" class="q-d" placeholder="الخيار D">
-        <label style="font-size: 12px;">الإجابة الصحيحة:</label>
-        <select class="q-correct">
-          <option value="A">الخيار A</option>
-          <option value="B">الخيار B</option>
-          <option value="C">الخيار C</option>
-          <option value="D">الخيار D</option>
-        </select>
-      `;
-      document.getElementById('builderQuestions').appendChild(qBox);
-    }
-
-    async function saveFullTest() {
-      const name = document.getElementById('newTestName').value;
-      const max_score = document.getElementById('newTestMax').value;
-      const duration = document.getElementById('newTestDuration').value;
-
-      if (!name) return alert('ادخلي عنوان الاختبار');
-
-      const qBoxes = document.querySelectorAll('#builderQuestions .question-box');
-      const questions = [];
-
-      qBoxes.forEach(box => {
-        const text = box.querySelector('.q-text').value;
-        if (text) {
-          questions.push({
-            text,
-            image_url: box.querySelector('.q-img-url').value,
-            a: box.querySelector('.q-a').value,
-            b: box.querySelector('.q-b').value,
-            c: box.querySelector('.q-c').value,
-            d: box.querySelector('.q-d').value,
-            correct: box.querySelector('.q-correct').value
-          });
-        }
-      });
-
-      const res = await fetch('/api/tests/full', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, max_score, duration: duration || 0, questions })
-      });
-
-      if (res.ok) {
-        alert('تم نشر الاختبار بنجاح!');
-        document.getElementById('newTestName').value = '';
-        document.getElementById('newTestDuration').value = '';
-        loadData();
-      }
-    }
-
-    async function deleteTest() {
-      const testId = document.getElementById('deleteTestSelect').value;
-      if (!testId) return alert('يرجى اختيار الاختبار المراد حذفه');
-
-      if (confirm('هل أنتِ متأكدة من حذف هذا الاختبار وجميع الدرجات المرتبطة به؟')) {
-        const res = await fetch(`/api/tests/${testId}`, { method: 'DELETE' });
-        if (res.ok) { alert('تم حذف الاختبار بنجاح!'); loadData(); }
-      }
-    }
-
-    async function deleteStudent(id, name) {
-      if (confirm(`هل أنتِ متأكدة من حذف الطالبة (${name}) وجميع درجاتها؟`)) {
-        const res = await fetch(`/api/students/${id}`, { method: 'DELETE' });
-        if (res.ok) { alert('تم حذف الطالبة بنجاح!'); loadData(); }
-      }
-    }
-
-    async function importGoogleForms() {
-      const test_id = document.getElementById('gfTestSelect').value;
-      const text = document.getElementById('gfScoresText').value;
-      if (!text) return alert('ادخلي البيانات');
-
-      const lines = text.split('\n');
-      const rows = [];
-      lines.forEach(line => {
-        const parts = line.trim().split(/[\t,]+/);
-        if (parts.length >= 2) rows.push({ name: parts[0].trim(), score: parts[1].trim() });
-      });
-
-      const res = await fetch('/api/scores/bulk-import', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ test_id, rows })
-      });
-
-      const data = await res.json();
-      if (res.ok) {
-        alert(`تم مطابقة واستيراد درجات ${data.matched} طالبة بنجاح!`);
-        document.getElementById('gfScoresText').value = '';
-        loadData();
-      }
-    }
-
-    async function startQuiz() {
-      const studentId = document.getElementById('studentSelect').value;
-      const pin = document.getElementById('studentPin').value;
-      const testId = document.getElementById('testSelect').value;
-
-      if (!studentId || !pin || !testId) return alert('يرجى اختيار اسم الطالبة وإدخال الرمز السري واختيار الاختبار');
-
-      const authRes = await fetch('/api/students/verify-pin', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ student_id: studentId, pin })
-      });
-
-      const authData = await authRes.json();
-      if (!authRes.ok || !authData.valid) return alert('الرمز السري غير صحيح!');
-
-      const res = await fetch(`/api/tests/${testId}/questions`);
-      const data = await res.json();
-
-      if (data.questions.length === 0) return alert('هذا الاختبار لا يحتوي على أسئلة أونلاين');
-
-      document.getElementById('studentQuizPortal').style.display = 'none';
-      document.getElementById('quizArea').style.display = 'block';
-
-      const qContainer = document.getElementById('questionsContainer');
-      qContainer.innerHTML = '';
-
-      data.questions.forEach((q, idx) => {
-        let imgHtml = q.image_url ? `<img src="${q.image_url}" class="q-img" alt="صورة السؤال">` : '';
-        qContainer.innerHTML += `
-          <div class="question-box" data-qid="${q.id}">
-            <p style="font-weight:bold; margin-bottom:10px;">س${idx + 1}: ${q.question_text}</p>
-            ${imgHtml}
-            <div class="option-group"><input type="radio" name="q_${q.id}" value="A"> أ) ${q.option_a}</div>
-            <div class="option-group"><input type="radio" name="q_${q.id}" value="B"> ب) ${q.option_b}</div>
-            <div class="option-group"><input type="radio" name="q_${q.id}" value="C"> ج) ${q.option_c}</div>
-            <div class="option-group"><input type="radio" name="q_${q.id}" value="D"> د) ${q.option_d}</div>
-          </div>
-        `;
-      });
-
-      if (data.duration && data.duration > 0) {
-        startTimer(data.duration * 60);
-      } else {
-        document.getElementById('timerBox').style.display = 'none';
-      }
-    }
-
-    function startTimer(seconds) {
-      const timerBox = document.getElementById('timerBox');
-      const timeDisplay = document.getElementById('timeRemaining');
-      timerBox.style.display = 'block';
-
-      let remaining = seconds;
-
-      quizTimer = setInterval(() => {
-        let mins = Math.floor(remaining / 60);
-        let secs = remaining % 60;
-        timeDisplay.innerText = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
-
-        if (remaining <= 0) {
-          clearInterval(quizTimer);
-          alert('انتهى وقت الاختبار! سيتم تسليم إجاباتكِ تلقائياً.');
-          submitQuiz();
-        }
-        remaining--;
-      }, 1000);
-    }
-
-    async function submitQuiz() {
-      if (quizTimer) clearInterval(quizTimer);
-
-      const studentId = document.getElementById('studentSelect').value;
-      const testId = document.getElementById('testSelect').value;
-      const qBoxes = document.querySelectorAll('#questionsContainer .question-box');
-      const answers = {};
-
-      qBoxes.forEach(box => {
-        const qid = box.getAttribute('data-qid');
-        const checked = box.querySelector(`input[name="q_${qid}"]:checked`);
-        if (checked) answers[qid] = checked.value;
-      });
-
-      const res = await fetch(`/api/tests/${testId}/submit`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ student_id: studentId, answers })
-      });
-
-      const data = await res.json();
-      if (res.ok) {
-        alert(`أحسنتِ! درجاتكِ في الاختبار هي: ${data.score} من ${data.total}`);
-        location.reload();
-      }
-    }
-
-    async function updateScore(student_id, test_id, score) {
-      await fetch('/api/scores', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ student_id, test_id, score })
-      });
-      loadData();
-    }
-
-    async function loadAnalytics() {
-      const testId = document.getElementById('analyticsTestSelect').value;
-      const div = document.getElementById('analyticsResults');
-      if (!testId) return div.innerHTML = '';
-
-      const res = await fetch(`/api/tests/${testId}/analytics`);
-      const data = await res.json();
-
-      div.innerHTML = `<p style="font-weight:bold; margin-bottom:8px;">عدد الطالبات اللاتي أتممن الاختبار: ${data.totalSubmissions}</p>`;
-      
-      data.questions.forEach((q, idx) => {
-        let percent = q.total > 0 ? Math.round((q.correct / q.total) * 100) : 0;
-        div.innerHTML += `
-          <div class="analytics-card">
-            <div><b>س${idx + 1}: ${q.question_text}</b></div>
-            <div style="font-size:12px; color:#666; margin-top:4px;">الإجابات الصحيحة: ${q.correct} من ${q.total} (${percent}%)</div>
-            <div class="progress-bar"><div class="progress-fill" style="width: ${percent}%;"></div></div>
-          </div>
-        `;
-      });
-    }
-
-    function exportToCSV() {
-      if (!currentData) return;
-      let csvContent = "\uFEFFالرقم,اسم الطالبة,الفصل,";
-      currentData.tests.forEach(t => csvContent += `"${t.name}",`);
-      csvContent += "المجموع,المتوسط\n";
-
-      currentData.leaderboard.forEach((st, idx) => {
-        csvContent += `${idx + 1},"${st.name}","${st.class_name}",`;
-        currentData.tests.forEach(t => {
-          let score = st.scoresMap[t.id] !== undefined ? st.scoresMap[t.id] : '';
-          csvContent += `"${score}",`;
-        });
-        csvContent += `${st.total},${st.avg}\n`;
-      });
-
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.download = "كشف_نتائج_تحدي_الفيزياء.csv";
-      link.click();
-    }
-
-    function renderTable() {
-      if (!currentData) return;
-      let list = currentData.leaderboard;
-      if (currentFilter !== 'الكل') list = list.filter(s => s.class_name === currentFilter);
-
-      list.sort((a, b) => b.total - a.total);
-
-      const headerRow = document.getElementById('headerRow');
-      headerRow.innerHTML = `<th>المركز</th><th>اسم الطالبة</th><th>الفصل</th>`;
-      currentData.tests.forEach(t => { headerRow.innerHTML += `<th>${t.name}</th>`; });
-      headerRow.innerHTML += `<th>المجموع</th><th>المتوسط</th>`;
-      if (isAdmin) { headerRow.innerHTML += `<th>حذف</th>`; }
-
-      const tbody = document.getElementById('bodyRows');
-      tbody.innerHTML = '';
-
-      let currentRank = 0;
-      let lastTotal = -1;
-
-      list.forEach((st, idx) => {
-        if (st.total !== lastTotal) {
-          currentRank = idx + 1;
-          lastTotal = st.total;
-        }
-
-        let badgeClass = '';
-        if (currentRank === 1) badgeClass = 'rank-1';
-        else if (currentRank === 2) badgeClass = 'rank-2';
-        else if (currentRank === 3) badgeClass = 'rank-3';
-
-        let badge = `<span class="rank-badge ${badgeClass}">${currentRank}</span>`;
-
-        let row = `<tr>
-          <td>${badge}</td>
-          <td><b>${st.name}</b></td>
-          <td>${st.class_name}</td>`;
-
-        currentData.tests.forEach(t => {
-          let score = st.scoresMap[t.id] !== undefined ? st.scoresMap[t.id] : '';
-          if (isAdmin) {
-            row += `<td><input type="number" class="score-input" value="${score}" onchange="updateScore(${st.id}, ${t.id}, this.value)"></td>`;
-          } else {
-            row += `<td>${score !== '' ? score : '-'}</td>`;
+      const ctx = document.getElementById('publicClassChart').getContext('2d');
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'متوسط درجات الفصل',
+            data: averages,
+            backgroundColor: [
+              'rgba(79, 70, 229, 0.85)',
+              'rgba(16, 185, 129, 0.85)',
+              'rgba(245, 158, 11, 0.85)',
+              'rgba(239, 68, 68, 0.85)'
+            ],
+            borderRadius: 8
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: { beginAtZero: true, title: { display: true, text: 'متوسط الدرجة' } }
           }
+        }
+      });
+    } catch (err) {
+      console.error("خطأ في جلب التحليل البياني:", err);
+    }
+  }
+
+  // 2. تحميل كشف الطالبات والمجموع الكلي
+  async function loadTableData() {
+    try {
+      const res = await fetch('/api/data');
+      const data = await res.json();
+
+      const headerRow = document.getElementById('tableHeader');
+      const tableBody = document.getElementById('tableBody');
+
+      // إضافة أعمدة الاختبارات إن وجدت
+      data.tests.forEach(test => {
+        const th = document.createElement('th');
+        th.textContent = test.name;
+        headerRow.insertBefore(th, headerRow.lastElementChild);
+      });
+
+      // عرض درجات الطالبات والمجموع
+      tableBody.innerHTML = '';
+      data.leaderboard.forEach(student => {
+        let tr = document.createElement('tr');
+        
+        let html = `<td>${student.name}</td><td>${student.class_name}</td>`;
+        
+        data.tests.forEach(test => {
+          const score = student.scoresMap[test.id];
+          html += `<td>${score !== undefined ? score : '-'}</td>`;
         });
 
-        row += `<td style="color:var(--primary); font-weight:bold;">${st.total}</td><td>${st.avg}</td>`;
-        if (isAdmin) {
-          row += `<td><button class="btn btn-danger" style="padding: 4px 8px; font-size: 12px; width: auto;" onclick="deleteStudent(${st.id}, '${st.name}')">❌</button></td>`;
-        }
-        row += `</tr>`;
-        tbody.innerHTML += row;
+        html += `<td><span class="badge">${student.total}</span></td>`;
+        tr.innerHTML = html;
+        tableBody.appendChild(tr);
       });
-    }
 
-    checkAuth();
-  </script>
+    } catch (err) {
+      console.error("خطأ في جلب الجدول:", err);
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    loadClassAnalytics();
+    loadTableData();
+  });
+</script>
+
 </body>
 </html>
