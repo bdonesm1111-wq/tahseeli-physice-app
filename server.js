@@ -32,7 +32,8 @@ db.serialize(() => {
   db.run(`CREATE TABLE IF NOT EXISTS tests (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
-    max_score REAL DEFAULT 100
+    max_score REAL DEFAULT 100,
+    duration INTEGER DEFAULT 0
   )`);
 
   db.run(`CREATE TABLE IF NOT EXISTS scores (
@@ -157,9 +158,9 @@ app.post('/api/students/verify-pin', (req, res) => {
 
 app.post('/api/tests/full', (req, res) => {
   if (!isAdmin(req)) return res.status(403).json({ error: 'غير مصرح' });
-  const { name, max_score, questions } = req.body;
+  const { name, max_score, duration, questions } = req.body;
 
-  db.run('INSERT INTO tests (name, max_score) VALUES (?, ?)', [name, max_score || 100], function(err) {
+  db.run('INSERT INTO tests (name, max_score, duration) VALUES (?, ?, ?)', [name, max_score || 100, duration || 0], function(err) {
     if (err) return res.status(500).json({ error: err.message });
     const testId = this.lastID;
 
@@ -187,8 +188,10 @@ app.delete('/api/tests/:id', (req, res) => {
 });
 
 app.get('/api/tests/:id/questions', (req, res) => {
-  db.all('SELECT id, question_text, image_url, option_a, option_b, option_c, option_d FROM questions WHERE test_id = ?', [req.params.id], (err, questions) => {
-    res.json({ questions: questions || [] });
+  db.get('SELECT duration FROM tests WHERE id = ?', [req.params.id], (err, test) => {
+    db.all('SELECT id, question_text, image_url, option_a, option_b, option_c, option_d FROM questions WHERE test_id = ?', [req.params.id], (err, questions) => {
+      res.json({ duration: test ? test.duration : 0, questions: questions || [] });
+    });
   });
 });
 
