@@ -54,11 +54,18 @@
     .option-group { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
     .option-group input[type="radio"] { width: auto; margin: 0; }
 
+    .timer-box {
+      position: sticky; top: 10px; background: #e74c3c; color: white;
+      padding: 10px 15px; border-radius: 12px; text-align: center;
+      font-size: 18px; font-weight: bold; margin-bottom: 15px; z-index: 100;
+      box-shadow: 0 4px 10px rgba(231, 76, 60, 0.3);
+    }
+
     .analytics-card { background: #fff; border-right: 4px solid var(--primary); padding: 12px; margin-bottom: 10px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.02); }
     .progress-bar { background: #e2e8f0; border-radius: 8px; height: 12px; width: 100%; overflow: hidden; margin-top: 5px; }
     .progress-fill { background: var(--primary); height: 100%; }
 
-    .footer { text-align: center; padding: 20px 0 10px 0; color: #718096; font-size: 14px; font-weight: 500; }
+    .footer { text-align: center; padding: 20px 0 10px 0; color: #718096; font-size: 14px; font-weight: 500; display: none; }
     .footer span { color: #e25822; }
   </style>
 </head>
@@ -128,9 +135,10 @@
       </div>
 
       <div id="quizArea" style="display: none; margin-top: 15px;">
+        <div id="timerBox" class="timer-box" style="display: none;">⏳ الوقت المتبقي: <span id="timeRemaining">--:--</span></div>
         <h4 id="quizTitle" style="margin-bottom: 15px;"></h4>
         <div id="questionsContainer"></div>
-        <button class="btn" onclick="submitQuiz()">إرسال الإجابات والنتيجة</button>
+        <button class="btn" id="submitBtn" onclick="submitQuiz()">إرسال الإجابات والنتيجة</button>
       </div>
     </div>
 
@@ -186,9 +194,10 @@
 
         <hr style="margin: 15px 0; border: none; border-top: 1px solid #e2e8f0;">
 
-        <h4>➕ 3. إنشاء اختبار تفاعلي مع إمكانية إضافة صور:</h4>
+        <h4>➕ 3. إنشاء اختبار تفاعلي مع تحديد مدة زمنية:</h4>
         <input type="text" id="newTestName" placeholder="عنوان الاختبار (مثال: اختبار السرعة والتسارع)">
         <input type="number" id="newTestMax" placeholder="الدرجة الكلية" value="100">
+        <input type="number" id="newTestDuration" placeholder="مدة الاختبار بالدقائق (مثلاً: 15 - اتركيه فارغاً إن لم ترغبي بمدة)">
         
         <div id="builderQuestions">
           <div class="question-box">
@@ -218,7 +227,8 @@
       </div>
     </div>
 
-    <div class="footer">
+    <!-- التوقيع السفلِي متوقف مؤقتاً برمجياً مع حفظ الإمكانية للعودة -->
+    <div class="footer" style="display: none;">
       صُنِعَ بحب بواسطة <b>صفاء صميلي</b> <span>❤️</span>
     </div>
 
@@ -228,6 +238,7 @@
     let currentFilter = 'الكل';
     let currentData = null;
     let isAdmin = false;
+    let quizTimer = null;
 
     async function checkAuth() {
       const res = await fetch('/api/auth-check');
@@ -346,6 +357,8 @@
     async function saveFullTest() {
       const name = document.getElementById('newTestName').value;
       const max_score = document.getElementById('newTestMax').value;
+      const duration = document.getElementById('newTestDuration').value;
+
       if (!name) return alert('ادخلي عنوان الاختبار');
 
       const qBoxes = document.querySelectorAll('#builderQuestions .question-box');
@@ -368,12 +381,13 @@
 
       const res = await fetch('/api/tests/full', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, max_score, questions })
+        body: JSON.stringify({ name, max_score, duration: duration || 0, questions })
       });
 
       if (res.ok) {
         alert('تم نشر الاختبار بنجاح!');
         document.getElementById('newTestName').value = '';
+        document.getElementById('newTestDuration').value = '';
         loadData();
       }
     }
@@ -459,9 +473,38 @@
           </div>
         `;
       });
+
+      if (data.duration && data.duration > 0) {
+        startTimer(data.duration * 60);
+      } else {
+        document.getElementById('timerBox').style.display = 'none';
+      }
+    }
+
+    function startTimer(seconds) {
+      const timerBox = document.getElementById('timerBox');
+      const timeDisplay = document.getElementById('timeRemaining');
+      timerBox.style.display = 'block';
+
+      let remaining = seconds;
+
+      quizTimer = setInterval(() => {
+        let mins = Math.floor(remaining / 60);
+        let secs = remaining % 60;
+        timeDisplay.innerText = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+
+        if (remaining <= 0) {
+          clearInterval(quizTimer);
+          alert('انتهى وقت الاختبار! سيتم تسليم إجاباتكِ تلقائياً.');
+          submitQuiz();
+        }
+        remaining--;
+      }, 1000);
     }
 
     async function submitQuiz() {
+      if (quizTimer) clearInterval(quizTimer);
+
       const studentId = document.getElementById('studentSelect').value;
       const testId = document.getElementById('testSelect').value;
       const qBoxes = document.querySelectorAll('#questionsContainer .question-box');
@@ -553,9 +596,21 @@
       const tbody = document.getElementById('bodyRows');
       tbody.innerHTML = '';
 
+      let currentRank = 0;
+      let lastTotal = -1;
+
       list.forEach((st, idx) => {
-        let badgeClass = idx === 0 ? 'rank-1' : idx === 1 ? 'rank-2' : idx === 2 ? 'rank-3' : '';
-        let badge = `<span class="rank-badge ${badgeClass}">${idx + 1}</span>`;
+        if (st.total !== lastTotal) {
+          currentRank = idx + 1;
+          lastTotal = st.total;
+        }
+
+        let badgeClass = '';
+        if (currentRank === 1) badgeClass = 'rank-1';
+        else if (currentRank === 2) badgeClass = 'rank-2';
+        else if (currentRank === 3) badgeClass = 'rank-3';
+
+        let badge = `<span class="rank-badge ${badgeClass}">${currentRank}</span>`;
 
         let row = `<tr>
           <td>${badge}</td>
