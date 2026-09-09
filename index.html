@@ -1,272 +1,278 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>نظام إدارة واختبارات الفيزياء</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <style>
-    :root {
-      --primary: #4f46e5;
-      --primary-hover: #4338ca;
-      --bg-color: #f8fafc;
-      --card-bg: #ffffff;
-      --text-main: #0f172a;
-      --text-muted: #64748b;
-      --border-color: #e2e8f0;
-      --success: #10b981;
-      --danger: #ef4444;
-    }
+const express = require('express');
+const sqlite3 = require('sqlite3').verbose();
+const session = require('express-session');
+const path = require('path');
+const fs = require('fs');
 
-    * { box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 0; }
-    body { background-color: var(--bg-color); color: var(--text-main); padding: 15px; }
-    .container { max-width: 1200px; margin: 0 auto; }
+const app = express();
+const PORT = process.env.PORT || 3000;
 
-    /* الهيدر وأزرار الإدارة */
-    header { display: flex; justify-content: space-between; align-items: center; background: var(--card-bg); padding: 15px 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
-    header h1 { font-size: 1.4rem; color: var(--primary); }
-    .btn { padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; transition: 0.2s; font-size: 0.9rem; }
-    .btn-primary { background: var(--primary); color: white; }
-    .btn-primary:hover { background: var(--primary-hover); }
-    .btn-danger { background: var(--danger); color: white; }
-    .btn-secondary { background: #e2e8f0; color: #334155; }
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname)));
 
-    /* كروت الإحصائيات */
-    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
-    .stat-card { background: var(--card-bg); padding: 15px; border-radius: 12px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
-    .stat-card h4 { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 5px; }
-    .stat-card .num { font-size: 1.5rem; font-weight: bold; color: var(--primary); }
+app.use(session({
+  secret: 'physics-secret-key-2026',
+  resave: false,
+  saveUninitialized: true
+}));
 
-    /* قسم الرسم البياني */
-    .chart-card { background: var(--card-bg); padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; }
-    .chart-container { position: relative; height: 300px; width: 100%; }
+// تحديد مسار آمن لقاعدة البيانات لضمان عدم الضياع على Railway
+const dbDir = process.env.DATA_DIR || path.join(__dirname);
+if (!fs.existsSync(dbDir)) {
+  fs.mkdirSync(dbDir, { recursive: true });
+}
+const dbPath = path.join(dbDir, 'database.db');
 
-    /* الجدول */
-    .table-card { background: var(--card-bg); padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); overflow-x: auto; margin-bottom: 20px; }
-    table { width: 100%; border-collapse: collapse; min-width: 600px; }
-    th, td { padding: 12px; text-align: center; border-bottom: 1px solid var(--border-color); }
-    th { background: #f1f5f9; color: var(--text-main); font-weight: 600; }
-    .badge-score { background: #e0e7ff; color: var(--primary); padding: 4px 8px; border-radius: 6px; font-weight: bold; }
+const db = new sqlite3.Database(dbPath, (err) => {
+  if (err) console.error('Database error:', err.message);
+  else console.log('Connected to SQLite database at:', dbPath);
+});
 
-    /* لوحة التحكم والنموذج المنبثق */
-    .admin-panel { background: #fff; padding: 20px; border-radius: 12px; border: 2px dashed var(--primary); margin-bottom: 20px; display: none; }
-    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000; padding: 15px; }
-    .modal-content { background: white; padding: 25px; border-radius: 12px; max-width: 500px; width: 100%; max-height: 90vh; overflow-y: auto; }
-    input, select, textarea { width: 100%; padding: 10px; margin: 8px 0 15px; border: 1px solid var(--border-color); border-radius: 6px; }
-  </style>
-</head>
-<body>
+// إنشاء الجداول في قاعدة البيانات
+db.serialize(() => {
+  db.run(`CREATE TABLE IF NOT EXISTS students (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    class_name TEXT NOT NULL,
+    pin TEXT DEFAULT '1234'
+  )`);
 
-<div class="container">
+  db.run(`CREATE TABLE IF NOT EXISTS tests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    max_score REAL DEFAULT 10,
+    duration INTEGER DEFAULT 0
+  )`);
+
+  db.run(`CREATE TABLE IF NOT EXISTS scores (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    student_id INTEGER,
+    test_id INTEGER,
+    score REAL,
+    UNIQUE(student_id, test_id)
+  )`);
+
+  db.run(`CREATE TABLE IF NOT EXISTS questions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    test_id INTEGER,
+    question_text TEXT,
+    image_url TEXT,
+    option_a TEXT,
+    option_b TEXT,
+    option_c TEXT,
+    option_d TEXT,
+    correct_option TEXT
+  )`);
+
+  db.run(`CREATE TABLE IF NOT EXISTS student_answers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    student_id INTEGER,
+    test_id INTEGER,
+    question_id INTEGER,
+    chosen_option TEXT,
+    is_correct INTEGER
+  )`);
+
+  db.run(`CREATE TABLE IF NOT EXISTS site_stats (
+    id INTEGER PRIMARY KEY,
+    visits INTEGER DEFAULT 0
+  )`);
+
+  db.run(`INSERT OR IGNORE INTO site_stats (id, visits) VALUES (1, 0)`);
+});
+
+const isAdmin = (req) => req.session && req.session.isAdmin;
+
+app.post('/api/login', (req, res) => {
+  if (req.body.password === 'admin123') {
+    req.session.isAdmin = true;
+    res.json({ success: true });
+  } else {
+    res.status(401).json({ error: 'كلمة المرور خاطئة' });
+  }
+});
+
+app.post('/api/logout', (req, res) => {
+  req.session.destroy();
+  res.json({ success: true });
+});
+
+app.get('/api/auth-check', (req, res) => {
+  res.json({ isAdmin: !!isAdmin(req) });
+});
+
+app.get('/api/data', (req, res) => {
+  db.run('UPDATE site_stats SET visits = visits + 1 WHERE id = 1');
   
-  <!-- الهيدر ودخول الإدارة -->
-  <header>
-    <h1>🎓 لوحة متابعة درجات الطالبات والأنشطة</h1>
-    <div id="authArea">
-      <button class="btn btn-primary" onclick="openLoginModal()" id="loginBtn">🔑 دخول الإدارة</button>
-      <button class="btn btn-danger" onclick="logout()" id="logoutBtn" style="display:none;">🚪 تسجيل الخروج</button>
-    </div>
-  </header>
+  db.get('SELECT visits FROM site_stats WHERE id = 1', [], (err, stat) => {
+    db.all('SELECT id, name, class_name FROM students', [], (err, students = []) => {
+      db.all('SELECT * FROM tests', [], (err, tests = []) => {
+        db.all('SELECT * FROM scores', [], (err, scores = []) => {
+          const leaderboard = students.map(st => {
+            const stScores = scores.filter(s => s.student_id === st.id);
+            const scoresMap = {};
+            let total = 0;
+            stScores.forEach(s => {
+              scoresMap[s.test_id] = s.score;
+              total += s.score;
+            });
+            return { ...st, scoresMap, total };
+          });
 
-  <!-- لوحة تحكم المعلمة (تظهر عند الدخول) -->
-  <div class="admin-panel" id="adminPanel">
-    <h3>⚙️ لوحة إدارة المعلمة</h3>
-    <p style="margin-bottom: 15px; color: var(--text-muted); font-size: 0.9rem;">يمكنكِ إضافة طالبت جديدة أو إنشاء اختبارات وتعديل الدرجات.</p>
-    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-      <button class="btn btn-primary" onclick="openAddStudentsModal()">➕ إضافة طالبات</button>
-      <button class="btn btn-primary" onclick="openCreateTestModal()">📝 إنشاء اختبار جديد</button>
-    </div>
-  </div>
-
-  <!-- الإحصائيات -->
-  <div class="stats-grid">
-    <div class="stat-card">
-      <h4>إجمالي الطالبات</h4>
-      <div class="num" id="totalStudents">0</div>
-    </div>
-    <div class="stat-card">
-      <h4>عدد الاختبارات</h4>
-      <div class="num" id="totalTests">0</div>
-    </div>
-    <div class="stat-card">
-      <h4>عدد الزيارات</h4>
-      <div class="num" id="visitCount">0</div>
-    </div>
-  </div>
-
-  <!-- خانة التحليل البياني لترتيب الفصول -->
-  <div class="chart-card">
-    <h3 style="margin-bottom: 15px; color: var(--text-main);">📊 مقارنة وترتيب الفصول بيائياً</h3>
-    <div class="chart-container">
-      <canvas id="publicClassChart"></canvas>
-    </div>
-  </div>
-
-  <!-- جدول الدرجات الكلية -->
-  <div class="table-card">
-    <h3 style="margin-bottom: 15px;">📋 كشف درجات الطالبات</h3>
-    <table>
-      <thead>
-        <tr id="tableHeader">
-          <th>اسم الطالبة</th>
-          <th>الفصل</th>
-          <th>المجموع الكلي</th>
-        </tr>
-      </thead>
-      <tbody id="tableBody">
-        <!-- يتم التحميل هنا -->
-      </tbody>
-    </table>
-  </div>
-
-</div>
-
-<!-- نافذة تسجيل الدخول -->
-<div class="modal" id="loginModal">
-  <div class="modal-content">
-    <h3>🔑 تسجيل دخول الإدارة</h3>
-    <input type="password" id="adminPassword" placeholder="أدخلي كلمة المرور">
-    <div style="display:flex; gap:10px;">
-      <button class="btn btn-primary" onclick="login()">دخول</button>
-      <button class="btn btn-secondary" onclick="closeModal('loginModal')">إلغاء</button>
-    </div>
-  </div>
-</div>
-
-<!-- نافذة إضافة طالبات -->
-<div class="modal" id="addStudentsModal">
-  <div class="modal-content">
-    <h3>➕ إضافة طالبات للكلية/الفصل</h3>
-    <label>اسم الفصل:</label>
-    <input type="text" id="newClassName" placeholder="مثال: 1/3">
-    <label>أسماء الطالبات (اسم في كل سطر):</label>
-    <textarea id="newStudentsList" rows="5" placeholder="أمل أحمد&#10;سارة محمد"></textarea>
-    <div style="display:flex; gap:10px;">
-      <button class="btn btn-primary" onclick="saveStudents()">حفظ</button>
-      <button class="btn btn-secondary" onclick="closeModal('addStudentsModal')">إلغاء</button>
-    </div>
-  </div>
-</div>
-
-<script>
-  let isAdmin = false;
-
-  async function checkAuth() {
-    const res = await fetch('/api/auth-check');
-    const data = await res.json();
-    isAdmin = data.isAdmin;
-    document.getElementById('adminPanel').style.display = isAdmin ? 'block' : 'none';
-    document.getElementById('loginBtn').style.display = isAdmin ? 'none' : 'inline-block';
-    document.getElementById('logoutBtn').style.display = isAdmin ? 'inline-block' : 'none';
-  }
-
-  function openLoginModal() { document.getElementById('loginModal').style.display = 'flex'; }
-  function openAddStudentsModal() { document.getElementById('addStudentsModal').style.display = 'flex'; }
-  function closeModal(id) { document.getElementById(id).style.display = 'none'; }
-
-  async function login() {
-    const pass = document.getElementById('adminPassword').value;
-    const res = await fetch('/api/login', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ password: pass })
-    });
-    if (res.ok) {
-      closeModal('loginModal');
-      location.reload();
-    } else {
-      alert('كلمة المرور غير صحيحة');
-    }
-  }
-
-  async function logout() {
-    await fetch('/api/logout', { method: 'POST' });
-    location.reload();
-  }
-
-  async function loadData() {
-    await checkAuth();
-    
-    // جلب البيانات الأساسية
-    const res = await fetch('/api/data');
-    const data = await res.json();
-
-    document.getElementById('totalStudents').textContent = data.totalStudents || 0;
-    document.getElementById('totalTests').textContent = data.totalTests || 0;
-    document.getElementById('visitCount').textContent = data.visits || 1;
-
-    // بناء عناوين الجدول
-    const header = document.getElementById('tableHeader');
-    header.innerHTML = '<th>اسم الطالبة</th><th>الفصل</th>';
-    data.tests.forEach(t => {
-      header.innerHTML += `<th>${t.name}</th>`;
-    });
-    header.innerHTML += '<th>المجموع الكلي</th>';
-
-    // بناء صفوف الطالبات
-    const body = document.getElementById('tableBody');
-    body.innerHTML = '';
-    data.leaderboard.forEach(st => {
-      let row = `<tr><td>${st.name}</td><td>${st.class_name}</td>`;
-      data.tests.forEach(t => {
-        const score = st.scoresMap[t.id];
-        row += `<td>${score !== undefined ? score : '-'}</td>`;
+          res.json({
+            totalStudents: students.length,
+            totalTests: tests.length,
+            visits: stat ? stat.visits : 1,
+            tests,
+            leaderboard
+          });
+        });
       });
-      row += `<td><span class="badge-score">${st.total}</span></td></tr>`;
-      body.innerHTML += row;
     });
+  });
+});
 
-    // جلب الرسم البياني
-    loadChart();
-  }
+app.post('/api/students/bulk', (req, res) => {
+  if (!isAdmin(req)) return res.status(403).json({ error: 'غير مصرح' });
+  const { class_name, students } = req.body;
+  const stmt = db.prepare('INSERT INTO students (name, class_name, pin) VALUES (?, ?, ?)');
+  students.forEach(st => stmt.run(st.name, class_name, st.pin));
+  stmt.finalize();
+  res.json({ success: true });
+});
 
-  async function loadChart() {
-    const res = await fetch('/api/analytics/classes');
-    const data = await res.json();
-    if (!data.classComparison || data.classComparison.length === 0) return;
-
-    const labels = data.classComparison.map(c => 'فصل ' + c.class_name);
-    const averages = data.classComparison.map(c => c.average_score ? parseFloat(c.average_score.toFixed(1)) : 0);
-
-    const ctx = document.getElementById('publicClassChart').getContext('2d');
-    new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: labels,
-        datasets: [{
-          label: 'متوسط درجات الفصل',
-          data: averages,
-          backgroundColor: '#4f46e5',
-          borderRadius: 8
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: { y: { beginAtZero: true } }
-      }
+app.delete('/api/students/:id', (req, res) => {
+  if (!isAdmin(req)) return res.status(403).json({ error: 'غير مصرح' });
+  const studentId = req.params.id;
+  db.run('DELETE FROM students WHERE id = ?', [studentId], () => {
+    db.run('DELETE FROM scores WHERE student_id = ?', [studentId], () => {
+      res.json({ success: true });
     });
-  }
+  });
+});
 
-  async function saveStudents() {
-    const className = document.getElementById('newClassName').value;
-    const rawList = document.getElementById('newStudentsList').value.split('\n');
-    const students = rawList.filter(n => n.trim() !== '').map(n => ({ name: n.trim(), pin: '1234' }));
+app.post('/api/students/verify-pin', (req, res) => {
+  const { student_id, pin } = req.body;
+  db.get('SELECT pin FROM students WHERE id = ?', [student_id], (err, row) => {
+    if (row && String(row.pin).trim() === String(pin).trim()) {
+      res.json({ valid: true });
+    } else {
+      res.json({ valid: false });
+    }
+  });
+});
 
-    if(!className || students.length === 0) return alert('يرجى تعبئة الحقول');
+app.post('/api/tests/full', (req, res) => {
+  if (!isAdmin(req)) return res.status(403).json({ error: 'غير مصرح' });
+  const { name, max_score, duration, questions } = req.body;
 
-    await fetch('/api/students/bulk', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ class_name: className, students })
+  db.run('INSERT INTO tests (name, max_score, duration) VALUES (?, ?, ?)', [name, parseFloat(max_score) || 10, duration || 0], function(err) {
+    if (err) return res.status(500).json({ error: err.message });
+    const testId = this.lastID;
+
+    if (questions && questions.length > 0) {
+      const stmt = db.prepare('INSERT INTO questions (test_id, question_text, image_url, option_a, option_b, option_c, option_d, correct_option) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+      questions.forEach(q => {
+        stmt.run(testId, q.text, q.image_url || '', q.a, q.b, q.c, q.d, q.correct);
+      });
+      stmt.finalize();
+    }
+    res.json({ success: true, testId });
+  });
+});
+
+app.delete('/api/tests/:id', (req, res) => {
+  if (!isAdmin(req)) return res.status(403).json({ error: 'غير مصرح' });
+  const testId = req.params.id;
+  db.run('DELETE FROM tests WHERE id = ?', [testId], () => {
+    db.run('DELETE FROM questions WHERE id = ?', [testId], () => {
+      db.run('DELETE FROM scores WHERE test_id = ?', [testId], () => {
+        res.json({ success: true });
+      });
     });
+  });
+});
 
-    closeModal('addStudentsModal');
-    loadData();
+app.get('/api/tests/:id/questions', (req, res) => {
+  db.get('SELECT duration, max_score FROM tests WHERE id = ?', [req.params.id], (err, test) => {
+    db.all('SELECT id, question_text, image_url, option_a, option_b, option_c, option_d FROM questions WHERE test_id = ?', [req.params.id], (err, questions) => {
+      res.json({ duration: test ? test.duration : 0, max_score: test ? test.max_score : 10, questions: questions || [] });
+    });
+  });
+});
+
+// تسليم الاختبار وتحقيق احتساب الدرجة من الدرجة الكلية المحددة للاختبار
+app.post('/api/tests/:id/submit', (req, res) => {
+  const testId = req.params.id;
+  const { student_id, answers } = req.body;
+
+  db.get('SELECT max_score FROM tests WHERE id = ?', [testId], (err, test) => {
+    const maxScore = (test && test.max_score) ? parseFloat(test.max_score) : 10;
+
+    db.all('SELECT id, correct_option FROM questions WHERE test_id = ?', [testId], (err, questions) => {
+      if (!questions || questions.length === 0) return res.status(400).json({ error: 'لا يوجد أسئلة' });
+
+      let correctCount = 0;
+      const stmt = db.prepare('INSERT INTO student_answers (student_id, test_id, question_id, chosen_option, is_correct) VALUES (?, ?, ?, ?, ?)');
+
+      questions.forEach(q => {
+        const chosen = answers ? answers[q.id] : null;
+        const isCorrect = chosen === q.correct_option ? 1 : 0;
+        if (isCorrect) correctCount++;
+        stmt.run(student_id, testId, q.id, chosen || '', isCorrect);
+      });
+      stmt.finalize();
+
+      // حساب الدرجة بناءً على الدرجة القصوى للاختبار (مثلاً من 10)
+      const calculatedScore = Number(((correctCount / questions.length) * maxScore).toFixed(1));
+
+      db.run(`INSERT INTO scores (student_id, test_id, score) VALUES (?, ?, ?)
+              ON CONFLICT(student_id, test_id) DO UPDATE SET score = excluded.score`,
+        [student_id, testId, calculatedScore],
+        (err) => {
+          res.json({ success: true, score: calculatedScore, total: maxScore });
+        });
+    });
+  });
+});
+
+// مسار جديد لمقارنة أداء الفصول بالرسوم البيانية
+app.get('/api/analytics/classes', (req, res) => {
+  if (!isAdmin(req)) return res.status(403).json({ error: 'غير مصرح' });
+
+  const query = `
+    SELECT 
+      st.class_name, 
+      COUNT(DISTINCT st.id) as student_count,
+      AVG(sc.score) as average_score,
+      SUM(sc.score) as total_scores
+    FROM students st
+    LEFT JOIN scores sc ON st.id = sc.student_id
+    GROUP BY st.class_name
+  `;
+
+  db.all(query, [], (err, rows = []) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ classComparison: rows });
+  });
+});
+
+app.post('/api/scores', (req, res) => {
+  if (!isAdmin(req)) return res.status(403).json({ error: 'غير مصرح' });
+  const { student_id, test_id, score } = req.body;
+  if (score === '' || score === null) {
+    db.run('DELETE FROM scores WHERE student_id = ? AND test_id = ?', [student_id, test_id], () => res.json({ success: true }));
+  } else {
+    db.run(`INSERT INTO scores (student_id, test_id, score) VALUES (?, ?, ?)
+            ON CONFLICT(student_id, test_id) DO UPDATE SET score = excluded.score`,
+      [student_id, test_id, parseFloat(score)],
+      () => res.json({ success: true }));
   }
+});
 
-  document.addEventListener('DOMContentLoaded', loadData);
-</script>
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
 
-</body>
-</html>
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
