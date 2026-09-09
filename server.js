@@ -17,7 +17,7 @@ app.use(session({
   saveUninitialized: true
 }));
 
-// تحديد مسار آمن لقاعدة البيانات لضمان عدم الضياع على Railway
+// حفظ قاعدة البيانات في المسار الآمن التابع لـ Railway لمنع مسح البيانات عند تعديل الكود
 const dbDir = process.env.DATA_DIR || path.join(__dirname);
 if (!fs.existsSync(dbDir)) {
   fs.mkdirSync(dbDir, { recursive: true });
@@ -102,6 +102,7 @@ app.get('/api/auth-check', (req, res) => {
   res.json({ isAdmin: !!isAdmin(req) });
 });
 
+// جلب كافة البيانات للجدول (تم حذف المتوسط والإبقاء على المجموع الكلي فقط)
 app.get('/api/data', (req, res) => {
   db.run('UPDATE site_stats SET visits = visits + 1 WHERE id = 1');
   
@@ -130,6 +131,26 @@ app.get('/api/data', (req, res) => {
         });
       });
     });
+  });
+});
+
+// مسار عام لتحليل أداء الفصول بالرسم البياني متاح للزائر والإدارة
+app.get('/api/analytics/classes', (req, res) => {
+  const query = `
+    SELECT 
+      st.class_name, 
+      COUNT(DISTINCT st.id) as student_count,
+      AVG(sc.score) as average_score,
+      SUM(sc.score) as total_scores
+    FROM students st
+    LEFT JOIN scores sc ON st.id = sc.student_id
+    GROUP BY st.class_name
+    ORDER BY average_score DESC
+  `;
+
+  db.all(query, [], (err, rows = []) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ classComparison: rows });
   });
 });
 
@@ -187,7 +208,7 @@ app.delete('/api/tests/:id', (req, res) => {
   const testId = req.params.id;
   db.run('DELETE FROM tests WHERE id = ?', [testId], () => {
     db.run('DELETE FROM questions WHERE id = ?', [testId], () => {
-      db.run('DELETE FROM scores WHERE test_id = ?', [testId], () => {
+      db.run('DELETE FROM scores WHERE student_id = ? AND test_id = ?', [testId], () => {
         res.json({ success: true });
       });
     });
@@ -202,7 +223,7 @@ app.get('/api/tests/:id/questions', (req, res) => {
   });
 });
 
-// تسليم الاختبار وتحقيق احتساب الدرجة من الدرجة الكلية المحددة للاختبار
+// تصحيح النتيجة بناءً على الدرجة الكلية المحددة للاختبار (مثلاً من 10)
 app.post('/api/tests/:id/submit', (req, res) => {
   const testId = req.params.id;
   const { student_id, answers } = req.body;
@@ -224,7 +245,6 @@ app.post('/api/tests/:id/submit', (req, res) => {
       });
       stmt.finalize();
 
-      // حساب الدرجة بناءً على الدرجة القصوى للاختبار (مثلاً من 10)
       const calculatedScore = Number(((correctCount / questions.length) * maxScore).toFixed(1));
 
       db.run(`INSERT INTO scores (student_id, test_id, score) VALUES (?, ?, ?)
@@ -234,27 +254,6 @@ app.post('/api/tests/:id/submit', (req, res) => {
           res.json({ success: true, score: calculatedScore, total: maxScore });
         });
     });
-  });
-});
-
-// مسار جديد لمقارنة أداء الفصول بالرسوم البيانية
-app.get('/api/analytics/classes', (req, res) => {
-  if (!isAdmin(req)) return res.status(403).json({ error: 'غير مصرح' });
-
-  const query = `
-    SELECT 
-      st.class_name, 
-      COUNT(DISTINCT st.id) as student_count,
-      AVG(sc.score) as average_score,
-      SUM(sc.score) as total_scores
-    FROM students st
-    LEFT JOIN scores sc ON st.id = sc.student_id
-    GROUP BY st.class_name
-  `;
-
-  db.all(query, [], (err, rows = []) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json({ classComparison: rows });
   });
 });
 
