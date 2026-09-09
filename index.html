@@ -3,269 +3,200 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>نظام إدارة واختبارات الفيزياء</title>
+  <title>لوحة درجات الطالبات والاختبارات</title>
+  <!-- مكتبة الأشكال الرسم البياني -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root {
-      --primary: #4f46e5;
-      --primary-hover: #4338ca;
-      --bg-color: #f8fafc;
-      --card-bg: #ffffff;
-      --text-main: #0f172a;
-      --text-muted: #64748b;
-      --border-color: #e2e8f0;
-      --success: #10b981;
-      --danger: #ef4444;
+      --primary: #4F46E5;
+      --primary-hover: #4338CA;
+      --bg: #F9FAFB;
+      --card-bg: #FFFFFF;
+      --text: #1F2937;
+      --border: #E5E7EB;
     }
 
-    * { box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 0; }
-    body { background-color: var(--bg-color); color: var(--text-main); padding: 15px; }
-    .container { max-width: 1200px; margin: 0 auto; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 20px;
+    }
 
-    /* الهيدر وأزرار الإدارة */
-    header { display: flex; justify-content: space-between; align-items: center; background: var(--card-bg); padding: 15px 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
-    header h1 { font-size: 1.4rem; color: var(--primary); }
-    .btn { padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; transition: 0.2s; font-size: 0.9rem; }
-    .btn-primary { background: var(--primary); color: white; }
-    .btn-primary:hover { background: var(--primary-hover); }
-    .btn-danger { background: var(--danger); color: white; }
-    .btn-secondary { background: #e2e8f0; color: #334155; }
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
 
-    /* كروت الإحصائيات */
-    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
-    .stat-card { background: var(--card-bg); padding: 15px; border-radius: 12px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
-    .stat-card h4 { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 5px; }
-    .stat-card .num { font-size: 1.5rem; font-weight: bold; color: var(--primary); }
+    .header {
+      text-align: center;
+      margin-bottom: 25px;
+    }
 
-    /* قسم الرسم البياني */
-    .chart-card { background: var(--card-bg); padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; }
-    .chart-container { position: relative; height: 300px; width: 100%; }
+    .card {
+      background: var(--card-bg);
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
 
-    /* الجدول */
-    .table-card { background: var(--card-bg); padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); overflow-x: auto; margin-bottom: 20px; }
-    table { width: 100%; border-collapse: collapse; min-width: 600px; }
-    th, td { padding: 12px; text-align: center; border-bottom: 1px solid var(--border-color); }
-    th { background: #f1f5f9; color: var(--text-main); font-weight: 600; }
-    .badge-score { background: #e0e7ff; color: var(--primary); padding: 4px 8px; border-radius: 6px; font-weight: bold; }
+    .table-responsive {
+      overflow-x: auto;
+    }
 
-    /* لوحة التحكم والنموذج المنبثق */
-    .admin-panel { background: #fff; padding: 20px; border-radius: 12px; border: 2px dashed var(--primary); margin-bottom: 20px; display: none; }
-    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000; padding: 15px; }
-    .modal-content { background: white; padding: 25px; border-radius: 12px; max-width: 500px; width: 100%; max-height: 90vh; overflow-y: auto; }
-    input, select, textarea { width: 100%; padding: 10px; margin: 8px 0 15px; border: 1px solid var(--border-color); border-radius: 6px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 10px 14px;
+      text-align: center;
+    }
+
+    th {
+      background-color: #F3F4F6;
+      font-weight: 600;
+    }
+
+    .chart-container {
+      position: relative;
+      height: 320px;
+      width: 100%;
+    }
+
+    .badge {
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-weight: bold;
+      background-color: #EEF2FF;
+      color: var(--primary);
+    }
   </style>
 </head>
 <body>
 
 <div class="container">
-  
-  <!-- الهيدر ودخول الإدارة -->
-  <header>
-    <h1>🎓 لوحة متابعة درجات الطالبات والأنشطة</h1>
-    <div id="authArea">
-      <button class="btn btn-primary" onclick="openLoginModal()" id="loginBtn">🔑 دخول الإدارة</button>
-      <button class="btn btn-danger" onclick="logout()" id="logoutBtn" style="display:none;">🚪 تسجيل الخروج</button>
-    </div>
-  </header>
-
-  <!-- لوحة تحكم المعلمة (تظهر عند الدخول) -->
-  <div class="admin-panel" id="adminPanel">
-    <h3>⚙️ لوحة إدارة المعلمة</h3>
-    <p style="margin-bottom: 15px; color: var(--text-muted); font-size: 0.9rem;">يمكنكِ إضافة طالبت جديدة أو إنشاء اختبارات وتعديل الدرجات.</p>
-    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-      <button class="btn btn-primary" onclick="openAddStudentsModal()">➕ إضافة طالبات</button>
-      <button class="btn btn-primary" onclick="openCreateTestModal()">📝 إنشاء اختبار جديد</button>
-    </div>
+  <div class="header">
+    <h1>لوحة متابعة درجات الطالبات والأداء</h1>
   </div>
 
-  <!-- الإحصائيات -->
-  <div class="stats-grid">
-    <div class="stat-card">
-      <h4>إجمالي الطالبات</h4>
-      <div class="num" id="totalStudents">0</div>
-    </div>
-    <div class="stat-card">
-      <h4>عدد الاختبارات</h4>
-      <div class="num" id="totalTests">0</div>
-    </div>
-    <div class="stat-card">
-      <h4>عدد الزيارات</h4>
-      <div class="num" id="visitCount">0</div>
-    </div>
-  </div>
-
-  <!-- خانة التحليل البياني لترتيب الفصول -->
-  <div class="chart-card">
-    <h3 style="margin-bottom: 15px; color: var(--text-main);">📊 مقارنة وترتيب الفصول بيائياً</h3>
+  <!-- خانة التحليل البياني للفصول (تظهر للزائر وللجميع) -->
+  <div class="card">
+    <h3 style="text-align: center; margin-top: 0;">📊 مقارنة وترتيب الفصول بيائياً</h3>
     <div class="chart-container">
       <canvas id="publicClassChart"></canvas>
     </div>
   </div>
 
-  <!-- جدول الدرجات الكلية -->
-  <div class="table-card">
-    <h3 style="margin-bottom: 15px;">📋 كشف درجات الطالبات</h3>
-    <table>
-      <thead>
-        <tr id="tableHeader">
-          <th>اسم الطالبة</th>
-          <th>الفصل</th>
-          <th>المجموع الكلي</th>
-        </tr>
-      </thead>
-      <tbody id="tableBody">
-        <!-- يتم التحميل هنا -->
-      </tbody>
-    </table>
-  </div>
-
-</div>
-
-<!-- نافذة تسجيل الدخول -->
-<div class="modal" id="loginModal">
-  <div class="modal-content">
-    <h3>🔑 تسجيل دخول الإدارة</h3>
-    <input type="password" id="adminPassword" placeholder="أدخلي كلمة المرور">
-    <div style="display:flex; gap:10px;">
-      <button class="btn btn-primary" onclick="login()">دخول</button>
-      <button class="btn btn-secondary" onclick="closeModal('loginModal')">إلغاء</button>
-    </div>
-  </div>
-</div>
-
-<!-- نافذة إضافة طالبات -->
-<div class="modal" id="addStudentsModal">
-  <div class="modal-content">
-    <h3>➕ إضافة طالبات للكلية/الفصل</h3>
-    <label>اسم الفصل:</label>
-    <input type="text" id="newClassName" placeholder="مثال: 1/3">
-    <label>أسماء الطالبات (اسم في كل سطر):</label>
-    <textarea id="newStudentsList" rows="5" placeholder="أمل أحمد&#10;سارة محمد"></textarea>
-    <div style="display:flex; gap:10px;">
-      <button class="btn btn-primary" onclick="saveStudents()">حفظ</button>
-      <button class="btn btn-secondary" onclick="closeModal('addStudentsModal')">إلغاء</button>
+  <!-- جدول الدرجات الكلية للجميع -->
+  <div class="card">
+    <h3>📋 كشف درجات الطالبات</h3>
+    <div class="table-responsive">
+      <table id="scoresTable">
+        <thead>
+          <tr id="tableHeader">
+            <th>الاسم</th>
+            <th>الفصل</th>
+            <th>المجموع الكلي</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody">
+          <!-- سيتم تحميل البيانات هنا تلقائياً -->
+        </tbody>
+      </table>
     </div>
   </div>
 </div>
 
 <script>
-  let isAdmin = false;
+  // 1. تحميل وترسيم الرسم البياني للفصول
+  async function loadClassAnalytics() {
+    try {
+      const res = await fetch('/api/analytics/classes');
+      const data = await res.json();
+      
+      if (!data.classComparison || data.classComparison.length === 0) return;
 
-  async function checkAuth() {
-    const res = await fetch('/api/auth-check');
-    const data = await res.json();
-    isAdmin = data.isAdmin;
-    document.getElementById('adminPanel').style.display = isAdmin ? 'block' : 'none';
-    document.getElementById('loginBtn').style.display = isAdmin ? 'none' : 'inline-block';
-    document.getElementById('logoutBtn').style.display = isAdmin ? 'inline-block' : 'none';
-  }
+      const labels = data.classComparison.map(c => 'فصل ' + c.class_name);
+      const averages = data.classComparison.map(c => c.average_score ? parseFloat(c.average_score.toFixed(1)) : 0);
 
-  function openLoginModal() { document.getElementById('loginModal').style.display = 'flex'; }
-  function openAddStudentsModal() { document.getElementById('addStudentsModal').style.display = 'flex'; }
-  function closeModal(id) { document.getElementById(id).style.display = 'none'; }
-
-  async function login() {
-    const pass = document.getElementById('adminPassword').value;
-    const res = await fetch('/api/login', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ password: pass })
-    });
-    if (res.ok) {
-      closeModal('loginModal');
-      location.reload();
-    } else {
-      alert('كلمة المرور غير صحيحة');
+      const ctx = document.getElementById('publicClassChart').getContext('2d');
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'متوسط درجات الفصل',
+            data: averages,
+            backgroundColor: [
+              'rgba(79, 70, 229, 0.85)',
+              'rgba(16, 185, 129, 0.85)',
+              'rgba(245, 158, 11, 0.85)',
+              'rgba(239, 68, 68, 0.85)'
+            ],
+            borderRadius: 8
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: { beginAtZero: true, title: { display: true, text: 'متوسط الدرجة' } }
+          }
+        }
+      });
+    } catch (err) {
+      console.error("خطأ في جلب التحليل البياني:", err);
     }
   }
 
-  async function logout() {
-    await fetch('/api/logout', { method: 'POST' });
-    location.reload();
-  }
+  // 2. تحميل كشف الطالبات والمجموع الكلي
+  async function loadTableData() {
+    try {
+      const res = await fetch('/api/data');
+      const data = await res.json();
 
-  async function loadData() {
-    await checkAuth();
-    
-    // جلب البيانات الأساسية
-    const res = await fetch('/api/data');
-    const data = await res.json();
+      const headerRow = document.getElementById('tableHeader');
+      const tableBody = document.getElementById('tableBody');
 
-    document.getElementById('totalStudents').textContent = data.totalStudents || 0;
-    document.getElementById('totalTests').textContent = data.totalTests || 0;
-    document.getElementById('visitCount').textContent = data.visits || 1;
-
-    // بناء عناوين الجدول
-    const header = document.getElementById('tableHeader');
-    header.innerHTML = '<th>اسم الطالبة</th><th>الفصل</th>';
-    data.tests.forEach(t => {
-      header.innerHTML += `<th>${t.name}</th>`;
-    });
-    header.innerHTML += '<th>المجموع الكلي</th>';
-
-    // بناء صفوف الطالبات
-    const body = document.getElementById('tableBody');
-    body.innerHTML = '';
-    data.leaderboard.forEach(st => {
-      let row = `<tr><td>${st.name}</td><td>${st.class_name}</td>`;
-      data.tests.forEach(t => {
-        const score = st.scoresMap[t.id];
-        row += `<td>${score !== undefined ? score : '-'}</td>`;
+      // إضافة أعمدة الاختبارات إن وجدت
+      data.tests.forEach(test => {
+        const th = document.createElement('th');
+        th.textContent = test.name;
+        headerRow.insertBefore(th, headerRow.lastElementChild);
       });
-      row += `<td><span class="badge-score">${st.total}</span></td></tr>`;
-      body.innerHTML += row;
-    });
 
-    // جلب الرسم البياني
-    loadChart();
+      // عرض درجات الطالبات والمجموع
+      tableBody.innerHTML = '';
+      data.leaderboard.forEach(student => {
+        let tr = document.createElement('tr');
+        
+        let html = `<td>${student.name}</td><td>${student.class_name}</td>`;
+        
+        data.tests.forEach(test => {
+          const score = student.scoresMap[test.id];
+          html += `<td>${score !== undefined ? score : '-'}</td>`;
+        });
+
+        html += `<td><span class="badge">${student.total}</span></td>`;
+        tr.innerHTML = html;
+        tableBody.appendChild(tr);
+      });
+
+    } catch (err) {
+      console.error("خطأ في جلب الجدول:", err);
+    }
   }
 
-  async function loadChart() {
-    const res = await fetch('/api/analytics/classes');
-    const data = await res.json();
-    if (!data.classComparison || data.classComparison.length === 0) return;
-
-    const labels = data.classComparison.map(c => 'فصل ' + c.class_name);
-    const averages = data.classComparison.map(c => c.average_score ? parseFloat(c.average_score.toFixed(1)) : 0);
-
-    const ctx = document.getElementById('publicClassChart').getContext('2d');
-    new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: labels,
-        datasets: [{
-          label: 'متوسط درجات الفصل',
-          data: averages,
-          backgroundColor: '#4f46e5',
-          borderRadius: 8
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: { y: { beginAtZero: true } }
-      }
-    });
-  }
-
-  async function saveStudents() {
-    const className = document.getElementById('newClassName').value;
-    const rawList = document.getElementById('newStudentsList').value.split('\n');
-    const students = rawList.filter(n => n.trim() !== '').map(n => ({ name: n.trim(), pin: '1234' }));
-
-    if(!className || students.length === 0) return alert('يرجى تعبئة الحقول');
-
-    await fetch('/api/students/bulk', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ class_name: className, students })
-    });
-
-    closeModal('addStudentsModal');
-    loadData();
-  }
-
-  document.addEventListener('DOMContentLoaded', loadData);
+  document.addEventListener('DOMContentLoaded', () => {
+    loadClassAnalytics();
+    loadTableData();
+  });
 </script>
 
 </body>
