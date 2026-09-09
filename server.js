@@ -17,7 +17,7 @@ app.use(session({
   saveUninitialized: true
 }));
 
-// تحديد مسار ثابت وآمن لقاعدة البيانات لضمان عدم استبدالها عند تعديل الأكواد
+// تحديد مسار ثابت وآمن لقاعدة البيانات لضمان عدم استبدالها على Railway عند التعديل
 const dbDir = process.env.DATA_DIR || path.join(__dirname);
 if (!fs.existsSync(dbDir)) {
   fs.mkdirSync(dbDir, { recursive: true });
@@ -29,7 +29,7 @@ const db = new sqlite3.Database(dbPath, (err) => {
   else console.log('Connected to SQLite database at:', dbPath);
 });
 
-// إنشاء الجداول فقط إذا لم تكن موجودة مسبقاً للحفاظ على البيانات المدخلة
+// إنشاء الجداول فقط إذا لم تكن موجودة مسبقاً
 db.serialize(() => {
   db.run(`CREATE TABLE IF NOT EXISTS students (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -117,9 +117,8 @@ app.get('/api/data', (req, res) => {
               scoresMap[s.test_id] = s.score;
               total += s.score;
             });
-            const count = stScores.length;
-            const avg = count > 0 ? (total / count).toFixed(1) : 0;
-            return { ...st, scoresMap, total, avg: parseFloat(avg) };
+            // تم حذف حساب المتوسط والإبقاء على المجموع الكلي فقط
+            return { ...st, scoresMap, total };
           });
 
           res.json({
