@@ -17,7 +17,7 @@ app.use(session({
   saveUninitialized: true
 }));
 
-// تحديد مسار ثابت وآمن لقاعدة البيانات لضمان عدم استبدالها على Railway عند التعديل
+// تحديد مسار آمن لقاعدة البيانات لضمان عدم الضياع على Railway
 const dbDir = process.env.DATA_DIR || path.join(__dirname);
 if (!fs.existsSync(dbDir)) {
   fs.mkdirSync(dbDir, { recursive: true });
@@ -29,7 +29,7 @@ const db = new sqlite3.Database(dbPath, (err) => {
   else console.log('Connected to SQLite database at:', dbPath);
 });
 
-// إنشاء الجداول فقط إذا لم تكن موجودة مسبقاً
+// إنشاء الجداول في قاعدة البيانات
 db.serialize(() => {
   db.run(`CREATE TABLE IF NOT EXISTS students (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -41,7 +41,7 @@ db.serialize(() => {
   db.run(`CREATE TABLE IF NOT EXISTS tests (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
-    max_score REAL DEFAULT 100,
+    max_score REAL DEFAULT 10,
     duration INTEGER DEFAULT 0
   )`);
 
@@ -117,7 +117,6 @@ app.get('/api/data', (req, res) => {
               scoresMap[s.test_id] = s.score;
               total += s.score;
             });
-            // تم حذف حساب المتوسط والإبقاء على المجموع الكلي فقط
             return { ...st, scoresMap, total };
           });
 
@@ -168,7 +167,7 @@ app.post('/api/tests/full', (req, res) => {
   if (!isAdmin(req)) return res.status(403).json({ error: 'غير مصرح' });
   const { name, max_score, duration, questions } = req.body;
 
-  db.run('INSERT INTO tests (name, max_score, duration) VALUES (?, ?, ?)', [name, max_score || 100, duration || 0], function(err) {
+  db.run('INSERT INTO tests (name, max_score, duration) VALUES (?, ?, ?)', [name, parseFloat(max_score) || 10, duration || 0], function(err) {
     if (err) return res.status(500).json({ error: err.message });
     const testId = this.lastID;
 
@@ -196,65 +195,66 @@ app.delete('/api/tests/:id', (req, res) => {
 });
 
 app.get('/api/tests/:id/questions', (req, res) => {
-  db.get('SELECT duration FROM tests WHERE id = ?', [req.params.id], (err, test) => {
+  db.get('SELECT duration, max_score FROM tests WHERE id = ?', [req.params.id], (err, test) => {
     db.all('SELECT id, question_text, image_url, option_a, option_b, option_c, option_d FROM questions WHERE test_id = ?', [req.params.id], (err, questions) => {
-      res.json({ duration: test ? test.duration : 0, questions: questions || [] });
+      res.json({ duration: test ? test.duration : 0, max_score: test ? test.max_score : 10, questions: questions || [] });
     });
   });
 });
 
+// تسليم الاختبار وتحقيق احتساب الدرجة من الدرجة الكلية المحددة للاختبار
 app.post('/api/tests/:id/submit', (req, res) => {
   const testId = req.params.id;
   const { student_id, answers } = req.body;
 
-  db.all('SELECT id, correct_option FROM questions WHERE test_id = ?', [testId], (err, questions) => {
-    if (!questions || questions.length === 0) return res.status(400).json({ error: 'لا يوجد أسئلة' });
+  db.get('SELECT max_score FROM tests WHERE id = ?', [testId], (err, test) => {
+    const maxScore = (test && test.max_score) ? parseFloat(test.max_score) : 10;
 
-    let correctCount = 0;
-    const stmt = db.prepare('INSERT INTO student_answers (student_id, test_id, question_id, chosen_option, is_correct) VALUES (?, ?, ?, ?, ?)');
+    db.all('SELECT id, correct_option FROM questions WHERE test_id = ?', [testId], (err, questions) => {
+      if (!questions || questions.length === 0) return res.status(400).json({ error: 'لا يوجد أسئلة' });
 
-    questions.forEach(q => {
-      const chosen = answers ? answers[q.id] : null;
-      const isCorrect = chosen === q.correct_option ? 1 : 0;
-      if (isCorrect) correctCount++;
-      stmt.run(student_id, testId, q.id, chosen || '', isCorrect);
-    });
-    stmt.finalize();
+      let correctCount = 0;
+      const stmt = db.prepare('INSERT INTO student_answers (student_id, test_id, question_id, chosen_option, is_correct) VALUES (?, ?, ?, ?, ?)');
 
-    const score = Math.round((correctCount / questions.length) * 100);
-
-    db.run(`INSERT INTO scores (student_id, test_id, score) VALUES (?, ?, ?)
-            ON CONFLICT(student_id, test_id) DO UPDATE SET score = excluded.score`,
-      [student_id, testId, score],
-      (err) => {
-        res.json({ success: true, score, total: 100 });
+      questions.forEach(q => {
+        const chosen = answers ? answers[q.id] : null;
+        const isCorrect = chosen === q.correct_option ? 1 : 0;
+        if (isCorrect) correctCount++;
+        stmt.run(student_id, testId, q.id, chosen || '', isCorrect);
       });
+      stmt.finalize();
+
+      // حساب الدرجة بناءً على الدرجة القصوى للاختبار (مثلاً من 10)
+      const calculatedScore = Number(((correctCount / questions.length) * maxScore).toFixed(1));
+
+      db.run(`INSERT INTO scores (student_id, test_id, score) VALUES (?, ?, ?)
+              ON CONFLICT(student_id, test_id) DO UPDATE SET score = excluded.score`,
+        [student_id, testId, calculatedScore],
+        (err) => {
+          res.json({ success: true, score: calculatedScore, total: maxScore });
+        });
+    });
   });
 });
 
-app.get('/api/tests/:id/analytics', (req, res) => {
+// مسار جديد لمقارنة أداء الفصول بالرسوم البيانية
+app.get('/api/analytics/classes', (req, res) => {
   if (!isAdmin(req)) return res.status(403).json({ error: 'غير مصرح' });
-  const testId = req.params.id;
 
-  db.all('SELECT id, question_text FROM questions WHERE test_id = ?', [testId], (err, questions = []) => {
-    db.all('SELECT question_id, is_correct FROM student_answers WHERE test_id = ?', [testId], (err, answers = []) => {
-      db.get('SELECT COUNT(DISTINCT student_id) as totalSubs FROM student_answers WHERE test_id = ?', [testId], (err, subRow) => {
-        const result = questions.map(q => {
-          const qAnswers = answers.filter(a => a.question_id === q.id);
-          const correct = qAnswers.filter(a => a.is_correct === 1).length;
-          return {
-            question_text: q.question_text,
-            total: qAnswers.length,
-            correct
-          };
-        });
+  const query = `
+    SELECT 
+      st.class_name, 
+      COUNT(DISTINCT st.id) as student_count,
+      AVG(sc.score) as average_score,
+      SUM(sc.score) as total_scores
+    FROM students st
+    LEFT JOIN scores sc ON st.id = sc.student_id
+    GROUP BY st.class_name
+  `;
 
-        res.json({
-          totalSubmissions: subRow ? subRow.totalSubs : 0,
-          questions: result
-        });
-      });
-    });
+  db.all(query, [], (err, rows = []) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ classComparison: rows });
   });
 });
 
@@ -269,28 +269,6 @@ app.post('/api/scores', (req, res) => {
       [student_id, test_id, parseFloat(score)],
       () => res.json({ success: true }));
   }
-});
-
-app.post('/api/scores/bulk-import', (req, res) => {
-  if (!isAdmin(req)) return res.status(403).json({ error: 'غير مصرح' });
-  const { test_id, rows } = req.body;
-
-  db.all('SELECT id, name FROM students', [], (err, students = []) => {
-    let matched = 0;
-    const stmt = db.prepare(`INSERT INTO scores (student_id, test_id, score) VALUES (?, ?, ?)
-      ON CONFLICT(student_id, test_id) DO UPDATE SET score = excluded.score`);
-
-    rows.forEach(r => {
-      const st = students.find(s => s.name.trim() === r.name.trim());
-      if (st && !isNaN(parseFloat(r.score))) {
-        stmt.run(st.id, test_id, parseFloat(r.score));
-        matched++;
-      }
-    });
-
-    stmt.finalize();
-    res.json({ success: true, matched });
-  });
 });
 
 app.get('*', (req, res) => {
