@@ -2,6 +2,7 @@ const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const session = require('express-session');
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -16,11 +17,19 @@ app.use(session({
   saveUninitialized: true
 }));
 
-const db = new sqlite3.Database('./database.db', (err) => {
+// تحديد مسار ثابت وآمن لقاعدة البيانات لضمان عدم استبدالها عند تعديل الأكواد
+const dbDir = process.env.DATA_DIR || path.join(__dirname);
+if (!fs.existsSync(dbDir)) {
+  fs.mkdirSync(dbDir, { recursive: true });
+}
+const dbPath = path.join(dbDir, 'database.db');
+
+const db = new sqlite3.Database(dbPath, (err) => {
   if (err) console.error('Database error:', err.message);
-  else console.log('Connected to SQLite database.');
+  else console.log('Connected to SQLite database at:', dbPath);
 });
 
+// إنشاء الجداول فقط إذا لم تكن موجودة مسبقاً للحفاظ على البيانات المدخلة
 db.serialize(() => {
   db.run(`CREATE TABLE IF NOT EXISTS students (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -180,7 +189,7 @@ app.delete('/api/tests/:id', (req, res) => {
   const testId = req.params.id;
   db.run('DELETE FROM tests WHERE id = ?', [testId], () => {
     db.run('DELETE FROM questions WHERE id = ?', [testId], () => {
-      db.run('DELETE FROM scores WHERE id = ?', [testId], () => {
+      db.run('DELETE FROM scores WHERE test_id = ?', [testId], () => {
         res.json({ success: true });
       });
     });
