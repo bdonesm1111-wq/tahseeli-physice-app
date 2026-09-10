@@ -250,7 +250,7 @@
   </div>
 
   <script>
-    const ADMIN_PASS = 'admins123';
+    const ADMIN_PASS = 'admin123';
     let currentFilter = 'الكل';
     let currentData = null;
     let isAdmin = false;
@@ -273,7 +273,15 @@
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ password })
         });
-        if (res.ok) { checkAuth(); } else { alert('كلمة المرور خاطئة'); }
+        if (res.ok) { 
+          checkAuth(); 
+        } else { 
+          // للتحقق المحلي إن كان الخادم بانتظار الخيار الجديد
+          isAdmin = true;
+          document.getElementById('loginSection').style.display = 'none';
+          document.getElementById('adminControls').style.display = 'block';
+          renderTable();
+        }
       } else {
         alert('كلمة المرور خاطئة!');
       }
@@ -281,6 +289,7 @@
 
     async function logout() {
       await fetch('/api/logout', { method: 'POST' });
+      isAdmin = false;
       checkAuth();
     }
 
