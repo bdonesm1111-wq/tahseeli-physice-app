@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>لوحة متابعة درجات الطالبات والأداء</title>
-  <!-- مكتبة الرسم البياني -->
+  <!-- مكتبة الرسم البياني Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root {
@@ -181,7 +181,7 @@
     </div>
   </div>
 
-  <!-- جدول الدرجات الكلية للجميع -->
+  <!-- جدول الدرجات الكلية -->
   <div class="card">
     <h3>📋 كشف درجات الطالبات</h3>
     <div class="table-responsive">
@@ -194,7 +194,7 @@
           </tr>
         </thead>
         <tbody id="tableBody">
-          <!-- سيتم تحميل البيانات هنا تلقائياً -->
+          <!-- تحميل البيانات تلقائياً -->
         </tbody>
       </table>
     </div>
@@ -207,7 +207,6 @@
   let isAdmin = false;
   let chartInstance = null;
 
-  // تسجيل الدخول للإدارة
   function toggleLogin() {
     if (isAdmin) return;
     const pass = prompt('يرجى إدخال كلمة مرور الإدارة:');
@@ -218,7 +217,7 @@
       document.getElementById('logoutBtn').style.display = 'inline-block';
       alert('تم تسجيل الدخول بنجاح!');
     } else if (pass !== null) {
-      alert('كلمة المرور غير صحيحة! الكلمة المطلوبة هي: admins123');
+      alert('كلمة المرور غير صحيحة!');
     }
   }
 
@@ -229,7 +228,7 @@
     document.getElementById('logoutBtn').style.display = 'none';
   }
 
-  // 1. تحميل وترسيم الرسم البياني للفصول
+  // تحميل وترسيم الرسم البياني للفصول
   async function loadClassAnalytics() {
     try {
       const res = await fetch('/api/analytics/classes');
@@ -287,7 +286,7 @@
     }
   }
 
-  // 2. تحميل كشف الطالبات والجدول
+  // تحميل جدول الدرجات
   async function loadTableData() {
     try {
       const res = await fetch('/api/data');
@@ -343,7 +342,6 @@
     }
   }
 
-  // إضافات الإدارة
   async function addStudent() {
     const name = document.getElementById('studentName').value.trim();
     const class_name = document.getElementById('studentClass').value.trim();
