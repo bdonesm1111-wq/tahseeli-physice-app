@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>تحدي التحصيلي فيزياء</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap">
+  <!-- مكتبة الرسم البياني Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root { --primary: #2d5a27; --primary-light: #4a7c43; --bg: #f4f6f8; --card-bg: #ffffff; --text: #2c3e50; }
     * { box-sizing: border-box; font-family: 'Tajawal', sans-serif; margin: 0; padding: 0; }
@@ -65,6 +67,12 @@
     .progress-bar { background: #e2e8f0; border-radius: 8px; height: 12px; width: 100%; overflow: hidden; margin-top: 5px; }
     .progress-fill { background: var(--primary); height: 100%; }
 
+    .chart-container {
+      position: relative;
+      height: 300px;
+      width: 100%;
+    }
+
     .footer { text-align: center; padding: 20px 0 10px 0; color: #718096; font-size: 14px; font-weight: 500; display: none; }
     .footer span { color: #e25822; }
   </style>
@@ -89,6 +97,14 @@
       <div class="stat-card">
         <div class="label">👁️ عدد الزوار</div>
         <div class="num" id="visitCount">0</div>
+      </div>
+    </div>
+
+    <!-- الرسم البياني للأداء والمقارنة -->
+    <div class="card">
+      <h3 style="text-align: center; margin-bottom: 15px; color: var(--primary);">📊 مقارنة متوسط درجات الفصول بيائياً</h3>
+      <div class="chart-container" id="chartBox">
+        <canvas id="publicClassChart"></canvas>
       </div>
     </div>
 
@@ -227,7 +243,6 @@
       </div>
     </div>
 
-    <!-- التوقيع السفلِي متوقف مؤقتاً برمجياً مع حفظ الإمكانية للعودة -->
     <div class="footer" style="display: none;">
       صُنِعَ بحب بواسطة <b>صفاء صميلي</b> <span>❤️</span>
     </div>
@@ -235,10 +250,12 @@
   </div>
 
   <script>
+    const ADMIN_PASS = 'admins123';
     let currentFilter = 'الكل';
     let currentData = null;
     let isAdmin = false;
     let quizTimer = null;
+    let chartInstance = null;
 
     async function checkAuth() {
       const res = await fetch('/api/auth-check');
@@ -251,11 +268,15 @@
 
     async function login() {
       const password = document.getElementById('adminPass').value;
-      const res = await fetch('/api/login', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password })
-      });
-      if (res.ok) { checkAuth(); } else { alert('كلمة المرور خاطئة'); }
+      if (password === ADMIN_PASS) {
+        const res = await fetch('/api/login', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password })
+        });
+        if (res.ok) { checkAuth(); } else { alert('كلمة المرور خاطئة'); }
+      } else {
+        alert('كلمة المرور خاطئة!');
+      }
     }
 
     async function logout() {
@@ -279,6 +300,52 @@
       
       populateDropdowns();
       renderTable();
+      renderChart();
+    }
+
+    function renderChart() {
+      if (!currentData || !currentData.leaderboard) return;
+
+      const classes = ['أ', 'ب', 'ج', 'د'];
+      const classScores = { 'أ': [], 'ب': [], 'ج': [], 'د': [] };
+
+      currentData.leaderboard.forEach(st => {
+        if (classScores[st.class_name]) {
+          classScores[st.class_name].push(st.avg || 0);
+        }
+      });
+
+      const averages = classes.map(cls => {
+        const scores = classScores[cls];
+        if (scores.length === 0) return 0;
+        const sum = scores.reduce((a, b) => parseFloat(a) + parseFloat(b), 0);
+        return parseFloat((sum / scores.length).toFixed(1));
+      });
+
+      const ctx = document.getElementById('publicClassChart').getContext('2d');
+      if (chartInstance) chartInstance.destroy();
+
+      chartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ['فصل (أ)', 'فصل (ب)', 'فصل (ج)', 'فصل (د)'],
+          datasets: [{
+            label: 'متوسط الأداء العام',
+            data: averages,
+            backgroundColor: '#2d5a27',
+            borderColor: '#4a7c43',
+            borderWidth: 1,
+            borderRadius: 8
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: { beginAtZero: true, title: { display: true, text: 'المتوسط' } }
+          }
+        }
+      });
     }
 
     function populateDropdowns() {
