@@ -1,14 +1,13 @@
 {
-  "name": "tahseeli-physics-app",
+  "name": "tahseeli-app",
   "version": "1.0.0",
-  "description": "تطبيق تحدي التحصيلي فيزياء",
+  "description": "تطبيق التحصيلي واختبارات درجات الطالبات",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
     "express": "^4.18.2",
-    "express-session": "^1.17.3",
     "sqlite3": "^5.1.6"
   }
 }
