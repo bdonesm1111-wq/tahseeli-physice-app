@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>لوحة متابعة درجات الطالبات والأداء</title>
-  <!-- مكتبة الرسم البياني Chart.js -->
+  <!-- مكتبة الرسم البياني -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root {
@@ -138,7 +138,7 @@
 
 <div class="container">
   
-  <!-- الهيدر الرئيسي -->
+  <!-- الهيدر أوفيس -->
   <div class="header">
     <h1>لوحة متابعة درجات الطالبات والأداء</h1>
     <div>
@@ -147,7 +147,7 @@
     </div>
   </div>
 
-  <!-- لوحة تحكم الإدارة -->
+  <!-- لوحة تحكم لوحة الإدارة (تظهر عند إدخال كلمة المرور) -->
   <div id="adminPanel" class="admin-panel">
     <h3 style="margin-top: 0; color: var(--primary);">⚙️ لوحة تحكم المعلمة والإدارة</h3>
     
@@ -181,7 +181,7 @@
     </div>
   </div>
 
-  <!-- جدول الدرجات الكلية -->
+  <!-- جدول الدرجات الكلية للجميع -->
   <div class="card">
     <h3>📋 كشف درجات الطالبات</h3>
     <div class="table-responsive">
@@ -194,7 +194,7 @@
           </tr>
         </thead>
         <tbody id="tableBody">
-          <!-- تحميل البيانات تلقائياً -->
+          <!-- سيتم تحميل البيانات هنا تلقائياً -->
         </tbody>
       </table>
     </div>
@@ -207,6 +207,7 @@
   let isAdmin = false;
   let chartInstance = null;
 
+  // تسجيل الدخول للإدارة
   function toggleLogin() {
     if (isAdmin) return;
     const pass = prompt('يرجى إدخال كلمة مرور الإدارة:');
@@ -228,7 +229,7 @@
     document.getElementById('logoutBtn').style.display = 'none';
   }
 
-  // تحميل وترسيم الرسم البياني للفصول
+  // 1. تحميل وترسيم الرسم البياني للفصول
   async function loadClassAnalytics() {
     try {
       const res = await fetch('/api/analytics/classes');
@@ -242,6 +243,7 @@
         return;
       }
 
+      // إرجاع خيار الـ Canvas في حال كان قد استبدل بالنص
       chartBox.innerHTML = '<canvas id="publicClassChart"></canvas>';
 
       const labels = data.classComparison.map(c => 'فصل ' + c.class_name);
@@ -286,7 +288,7 @@
     }
   }
 
-  // تحميل جدول الدرجات
+  // 2. تحميل كشف الطالبات والجدول
   async function loadTableData() {
     try {
       const res = await fetch('/api/data');
@@ -301,6 +303,7 @@
       studentSelect.innerHTML = '<option value="">اختر الطالبة...</option>';
       testSelect.innerHTML = '<option value="">اختر الاختبار...</option>';
 
+      // تعبئة قائمة الاختبارات
       if (data.tests && data.tests.length > 0) {
         data.tests.forEach(test => {
           const th = document.createElement('th');
@@ -314,14 +317,17 @@
         });
       }
 
+      // تعبئة الجدول وقائمة الطالبات
       tableBody.innerHTML = '';
       if (data.leaderboard && data.leaderboard.length > 0) {
         data.leaderboard.forEach(student => {
+          // إضافة للقائمة المنسدلة
           const opt = document.createElement('option');
           opt.value = student.id;
           opt.textContent = `${student.name} (${student.class_name})`;
           studentSelect.appendChild(opt);
 
+          // صف الجدول
           let tr = document.createElement('tr');
           let html = `<td>${student.name}</td><td>${student.class_name}</td>`;
           
@@ -342,6 +348,7 @@
     }
   }
 
+  // إضافات الإدارة
   async function addStudent() {
     const name = document.getElementById('studentName').value.trim();
     const class_name = document.getElementById('studentClass').value.trim();
