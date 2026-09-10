@@ -8,7 +8,9 @@ const PORT = process.env.PORT || 3000;
 // إعدادات البرمجيات الوسيطة
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, 'public'))); // مجلد الملفات الثابتة (index.html, quiz.html ..)
+
+// خدمة الملفات الثابتة من المجلد الرئيسي
+app.use(express.static(path.join(__dirname)));
 
 // ---------------------------------------------------------
 // 1. الاتصال بقاعدة البيانات SQLite وإنشاء الجداول تلقائياً
@@ -53,7 +55,7 @@ db.serialize(() => {
     )
   `);
 
-  // جدول سجل الخطط العلاجية (لتتبع الإتقان دون مساس بالدرجة الأصلية)
+  // جدول سجل الخطط العلاجية
   db.run(`
     CREATE TABLE IF NOT EXISTS remediation_logs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -67,21 +69,25 @@ db.serialize(() => {
 });
 
 // ---------------------------------------------------------
-// 2. مسارات العرض للوحة البيانات والمقارنة البيانية
+// 2. مسارات العرض والصفحة الرئيسية
 // ---------------------------------------------------------
+
+// توجيه الزائر تلقائياً إلى الصفحة الرئيسية index.html
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
 
 // مسار جلب جدول الدرجات الكلية وكشف الطالبات
 app.get('/api/data', (req, res) => {
-  db.all('SELECT * FROM tests ORDER BY id ASC', [], (err, tests) => {
+  db.all('SELECT * FROM tests ORDER BY id ASC', [], (err, tests = []) => {
     if (err) return res.status(500).json({ error: err.message });
 
-    db.all('SELECT * FROM students ORDER BY name ASC', [], (err, students) => {
+    db.all('SELECT * FROM students ORDER BY name ASC', [], (err, students = []) => {
       if (err) return res.status(500).json({ error: err.message });
 
-      db.all('SELECT * FROM scores', [], (err, scores) => {
+      db.all('SELECT * FROM scores', [], (err, scores = []) => {
         if (err) return res.status(500).json({ error: err.message });
 
-        // تجهيز الخريطة البرمجية للدرجات
         const leaderboard = students.map(student => {
           let total = 0;
           const scoresMap = {};
@@ -100,7 +106,6 @@ app.get('/api/data', (req, res) => {
           };
         });
 
-        // ترتيب الطالبات حسب المجموع الكلي تنازلياً
         leaderboard.sort((a, b) => b.total - a.total);
 
         res.json({
@@ -112,7 +117,7 @@ app.get('/api/data', (req, res) => {
   });
 });
 
-// مسار التحليل البياني ومقارنة وترتيب الفصول (يعمل مع Chart.js في الصفحة الرئيسية)
+// مسار التحليل البياني ومقارنة وترتيب الفصول
 app.get('/api/analytics/classes', (req, res) => {
   const query = `
     SELECT 
@@ -164,7 +169,7 @@ app.post('/api/tests', (req, res) => {
   });
 });
 
-// رصد/تسجيل درجة طالبة في اختبار (الدرجة الأصلية)
+// رصد درجة طالبة
 app.post('/api/scores', (req, res) => {
   const { student_id, test_id, score } = req.body;
   if (student_id === undefined || test_id === undefined || score === undefined) {
@@ -187,7 +192,6 @@ app.post('/api/scores', (req, res) => {
 // 4. مسار الخطة العلاجية (تسجيل الإتقان)
 // ---------------------------------------------------------
 
-// تسجيل إتقان الخطة العلاجية (دون المساس بالدرجة الأصلية)
 app.post('/api/remediation/complete', (req, res) => {
   const { student_id, test_id } = req.body;
   
@@ -207,7 +211,7 @@ app.post('/api/remediation/complete', (req, res) => {
     }
     res.json({ 
       success: true, 
-      message: 'تم إكمال الخطة العلاجية وإتقان المهارات بنجاح دون تعديل الدرجة الأصلية' 
+      message: 'تم إكمال الخطة العلاجية بنجاح' 
     });
   });
 });
@@ -216,8 +220,5 @@ app.post('/api/remediation/complete', (req, res) => {
 // 5. تشغيل الخادم
 // ---------------------------------------------------------
 app.listen(PORT, () => {
-  console.log(`=================================`);
   console.log(`🚀 الخادم يعمل بنجاح على المنفذ: ${PORT}`);
-  console.log(`http://localhost:${PORT}`);
-  console.log(`=================================`);
 });
